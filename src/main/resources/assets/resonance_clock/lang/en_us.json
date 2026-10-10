@@ -1,0 +1,15 @@
+{
+  "item.resonance_clock.resonance_relic": "Resonance Relic",
+  "key.categories.resonance_clock": "Resonance Clock",
+  "key.resonance_clock.temporal_twist": "Temporal Twist",
+  "message.resonance_clock.twist.disabled": "Temporal Twist is disabled on this server",
+  "message.resonance_clock.twist.not_equipped": "Equip the Resonance Relic in a Curios charm slot",
+  "message.resonance_clock.twist.cooldown": "Temporal Twist is on cooldown for %s seconds",
+  "message.resonance_clock.twist.started": "Temporal Twist anchored for %s seconds",
+  "message.resonance_clock.twist.cancelled": "Temporal Twist cancelled: %s",
+  "message.resonance_clock.twist.restored": "Temporal Twist restored your anchored state",
+  "message.resonance_clock.twist.dimension": "Temporal Twist failed: the anchored dimension is unavailable",
+  "message.resonance_clock.twist.unsafe": "Temporal Twist failed: no safe grounded destination was found",
+  "message.resonance_clock.twist.invalid_snapshot": "Temporal Twist failed: the anchored state is invalid",
+  "message.resonance_clock.twist.teleport_failed": "Temporal Twist failed: teleportation was not confirmed"
+}

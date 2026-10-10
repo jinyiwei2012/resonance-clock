@@ -1,0 +1,15 @@
+{
+  "item.resonance_clock.resonance_relic": "共鸣遗物",
+  "key.categories.resonance_clock": "心律共鸣时钟",
+  "key.resonance_clock.temporal_twist": "时光扭结",
+  "message.resonance_clock.twist.disabled": "此服务器已禁用时光扭结",
+  "message.resonance_clock.twist.not_equipped": "请将共鸣遗物装备到 Curios 的 charm 槽位",
+  "message.resonance_clock.twist.cooldown": "时光扭结冷却中，还需 %s 秒",
+  "message.resonance_clock.twist.started": "已锚定时光扭结，持续 %s 秒",
+  "message.resonance_clock.twist.cancelled": "时光扭结已取消：%s",
+  "message.resonance_clock.twist.restored": "时光扭结已恢复锚定状态",
+  "message.resonance_clock.twist.dimension": "时光扭结失败：锚定维度不可用",
+  "message.resonance_clock.twist.unsafe": "时光扭结失败：未找到安全且有支撑的落点",
+  "message.resonance_clock.twist.invalid_snapshot": "时光扭结失败：锚定状态无效",
+  "message.resonance_clock.twist.teleport_failed": "时光扭结失败：未确认传送成功"
+}

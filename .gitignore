@@ -1,0 +1,43 @@
+# eclipse
+bin
+*.launch
+.settings
+.metadata
+.classpath
+.project
+
+# idea
+out
+*.ipr
+*.iws
+*.iml
+.idea
+
+# Gradle and build output
+/build/
+/.gradle/
+
+# Runtime and IDE output
+/eclipse/
+/run/
+/run-data/
+
+# Local server verification data and diagnostics
+/verification/
+/BUILD_*.md
+/BUILD_*.log
+/CORE_FIX_BUILD.log
+/CORE_FIX_VERIFICATION.md
+/IMPLEMENTATION_VERIFICATION.md
+/CLIENT_VISUAL_VERIFICATION.md
+/SERVER_LOAD_VERIFICATION.md
+
+# Build artifacts
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Forge MDK records retained locally outside the repository
+/LICENSE.txt
+/CREDITS.txt
+/changelog.txt
+/README.txt
