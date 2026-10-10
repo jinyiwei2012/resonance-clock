@@ -9,6 +9,7 @@ import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.event.RegisterGameTestsEvent;
 
 @Mod(ResonanceClock.MOD_ID)
 public final class ResonanceClock {
@@ -17,8 +18,19 @@ public final class ResonanceClock {
   public ResonanceClock() {
     IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
     ModItems.register(modBus);
+    modBus.addListener(this::registerGameTests);
     ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, ServerConfig.SPEC);
     ModNetwork.register();
     MinecraftForge.EVENT_BUS.register(new ServerEvents());
+  }
+
+  private void registerGameTests(RegisterGameTestsEvent event) {
+    try {
+      Class<?> tests = Class.forName("dev.resonance.clock.state.TemporalStateGameTests");
+      event.register(tests);
+    } catch (ClassNotFoundException exception) {
+      System.getLogger(ResonanceClock.class.getName()).log(System.Logger.Level.DEBUG,
+          "GameTest source is absent from this runtime", exception);
+    }
   }
 }

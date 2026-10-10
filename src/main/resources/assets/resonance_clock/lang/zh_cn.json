@@ -1,5 +1,6 @@
 {
   "item.resonance_clock.resonance_relic": "共鸣遗物",
+  "item.resonance_clock.temporal_purifier": "时间净化晶",
   "key.categories.resonance_clock": "心律共鸣时钟",
   "key.resonance_clock.temporal_twist": "时光扭结",
   "message.resonance_clock.twist.disabled": "此服务器已禁用时光扭结",
@@ -11,5 +12,21 @@
   "message.resonance_clock.twist.dimension": "时光扭结失败：锚定维度不可用",
   "message.resonance_clock.twist.unsafe": "时光扭结失败：未找到安全且有支撑的落点",
   "message.resonance_clock.twist.invalid_snapshot": "时光扭结失败：锚定状态无效",
-  "message.resonance_clock.twist.teleport_failed": "时光扭结失败：未确认传送成功"
+  "message.resonance_clock.twist.teleport_failed": "时光扭结失败：未确认传送成功",
+  "message.resonance_clock.curse.applied": "已施加时之紊乱",
+  "message.resonance_clock.curse.restored": "时之紊乱已恢复你的锚定状态",
+  "message.resonance_clock.curse.restore_failed": "时之紊乱未能恢复你的锚定状态",
+  "message.resonance_clock.curse.none": "你没有可清除的时之紊乱",
+  "message.resonance_clock.curse.cleared": "已清除时之紊乱",
+  "command.resonance_clock.curse.result": "%s：%s",
+  "command.resonance_clock.curse.result.applied": "已施加时之紊乱",
+  "command.resonance_clock.curse.result.twist_active": "时光扭结生效期间无法施加",
+  "command.resonance_clock.curse.result.already_cursed": "已处于时之紊乱状态",
+  "command.resonance_clock.status": "%s：时之紊乱状态为%s，剩余 %s 个在线游戏刻",
+  "command.resonance_clock.status.active": "生效中",
+  "command.resonance_clock.status.inactive": "未生效",
+  "command.resonance_clock.clear.result": "已从 %s 名玩家身上清除时之紊乱",
+  "command.resonance_clock.debug.enabled": "已为本次服务器会话启用 Resonance Clock 调试日志",
+  "command.resonance_clock.debug.disabled": "已为本次服务器会话关闭 Resonance Clock 调试日志",
+  "command.resonance_clock.debug.status": "%s：调试=%s，已装备=%s，全局刻=%s，实体刻=%s，限流上次接受刻=%s，扭结锚点=%s，扭结剩余刻=%s，正在恢复=%s，冷却刻=%s，时之紊乱=%s，紊乱剩余刻=%s，扭结数据版本=%s，紊乱数据版本=%s"
 }

@@ -2,15 +2,23 @@ package dev.resonance.clock.state;
 
 import dev.resonance.clock.ResonanceClock;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerPlayer;
 
 public final class TemporalState {
-  private static final String ROOT = ResonanceClock.MOD_ID + ":temporal";
-  private static final int DATA_VERSION = 1;
+  static final String ROOT = ResonanceClock.MOD_ID + ":temporal";
+  static final String INVALID_NOTIFIED = ROOT + "_invalid_notified";
+  static final int DATA_VERSION = 1;
+
+  public enum Validation { INACTIVE, ACTIVE, INVALID }
 
   public record PublicState(boolean active, int remainingTicks, int cooldownTicks) {}
 
   public static PublicState publicState(ServerPlayer player) {
+    Validation validation = validate(player.getPersistentData());
+    if (validation == Validation.INVALID) {
+      return new PublicState(false, 0, 0);
+    }
     CompoundTag state = get(player);
     return new PublicState(state.contains("snapshot"), Math.max(0, state.getInt("remainingTicks")),
         Math.max(0, state.getInt("cooldownTicks")));
@@ -22,14 +30,58 @@ public final class TemporalState {
       CompoundTag state = new CompoundTag();
       state.putInt("version", DATA_VERSION);
       persistent.put(ROOT, state);
+    } else if (!persistent.contains(ROOT, Tag.TAG_COMPOUND)) {
+      throw new IllegalStateException("Temporal Twist root has the wrong NBT type");
     }
     return persistent.getCompound(ROOT);
   }
 
-  public static void copyOnRespawn(ServerPlayer original, ServerPlayer replacement) {
-    if (original.getPersistentData().contains(ROOT)) {
-      replacement.getPersistentData().put(ROOT, original.getPersistentData().getCompound(ROOT).copy());
+  public static Validation validate(CompoundTag persistent) {
+    if (!persistent.contains(ROOT)) {
+      return Validation.INACTIVE;
     }
+    if (!persistent.contains(ROOT, Tag.TAG_COMPOUND)) {
+      return Validation.INVALID;
+    }
+    CompoundTag state = persistent.getCompound(ROOT);
+    if (!state.contains("version", Tag.TAG_INT) || state.getInt("version") != DATA_VERSION) {
+      return Validation.INVALID;
+    }
+    if (!state.contains("snapshot")) {
+      return state.contains("cooldownTicks") && !state.contains("cooldownTicks", Tag.TAG_INT)
+          ? Validation.INVALID : Validation.INACTIVE;
+    }
+    if (!state.contains("snapshot", Tag.TAG_COMPOUND)
+        || !state.contains("remainingTicks", Tag.TAG_INT)
+        || state.getInt("remainingTicks") < 0
+        || !state.contains("executing", Tag.TAG_BYTE)) {
+      return Validation.INVALID;
+    }
+    try {
+      TemporalSnapshot.load(state.getCompound("snapshot"));
+      return Validation.ACTIVE;
+    } catch (RuntimeException exception) {
+      return Validation.INVALID;
+    }
+  }
+
+  public static void copyOnRespawn(ServerPlayer original, ServerPlayer replacement) {
+    Tag state = original.getPersistentData().get(ROOT);
+    if (state != null) {
+      replacement.getPersistentData().put(ROOT, state.copy());
+    }
+  }
+
+  public static boolean clearPersistent(CompoundTag persistent) {
+    if (!persistent.contains(ROOT)) {
+      return false;
+    }
+    persistent.remove(ROOT);
+    persistent.remove(INVALID_NOTIFIED);
+    CompoundTag state = new CompoundTag();
+    state.putInt("version", DATA_VERSION);
+    persistent.put(ROOT, state);
+    return true;
   }
 
   public static void clearAnchor(CompoundTag state) {

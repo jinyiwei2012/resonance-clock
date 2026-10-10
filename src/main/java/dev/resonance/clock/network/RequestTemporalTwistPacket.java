@@ -1,6 +1,7 @@
 package dev.resonance.clock.network;
 
 import dev.resonance.clock.api.ServerActions;
+import dev.resonance.clock.debug.ResonanceDebug;
 import java.util.function.Supplier;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -18,8 +19,12 @@ public final class RequestTemporalTwistPacket {
     NetworkEvent.Context context = contextSupplier.get();
     context.enqueueWork(() -> {
       ServerPlayer sender = context.getSender();
-      if (sender != null && ModNetwork.acceptTemporalTwistRequest(sender)) {
-        ServerActions.requestTemporalTwist(sender);
+      if (sender != null) {
+        boolean accepted = ModNetwork.acceptTemporalTwistRequest(sender);
+        ResonanceDebug.logTemporalTwistRequest(sender, accepted);
+        if (accepted) {
+          ServerActions.requestTemporalTwist(sender);
+        }
       }
     });
     context.setPacketHandled(true);

@@ -97,7 +97,16 @@ minecraft {
         // By default, the server will crash when no gametests are provided.
         // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
+            workingDirectory project.file('verification/gametest-s1')
             property 'forge.enabledGameTestNamespaces', mod_id
+            args '--nogui'
+            environment 'JAVA_TOOL_OPTIONS', '-Dforge.disableVersionCheck=true'
+            mods {
+                "${mod_id}" {
+                    source sourceSets.main
+                    source sourceSets.test
+                }
+            }
         }
 
         data {
@@ -206,4 +215,15 @@ publishing {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
+}
+
+tasks.matching { it.name == 'runGameTestServer' }.configureEach {
+    dependsOn tasks.named('processTestResources')
+    doFirst {
+        copy {
+            from sourceSets.test.output.resourcesDir
+            include 'gameteststructures/**'
+            into project.file('verification/gametest-s1')
+        }
+    }
 }

@@ -29,6 +29,12 @@ public record TemporalSnapshot(
     int fireTicks,
     float absorption,
     List<MobEffectInstance> effects) {
+  private static final double MAX_HORIZONTAL_COORDINATE = 29_999_984.0D;
+  private static final double MAX_ABSOLUTE_STORED_Y = 20_000_000.0D;
+  private static final float MAX_STORED_HEALTH = 1_000_000.0F;
+  private static final int MAX_STORED_AIR = 1_000_000;
+  private static final int MAX_STORED_FIRE_TICKS = 1_728_000;
+  private static final float MAX_STORED_ABSORPTION = 1_000_000.0F;
 
   public static TemporalSnapshot capture(ServerPlayer player) {
     Set<ResourceLocation> exclusions = ServerConfig.EXCLUDED_EFFECTS.get().stream()
@@ -83,20 +89,68 @@ public record TemporalSnapshot(
   }
 
   public static TemporalSnapshot load(CompoundTag tag) {
+    requireType(tag, "dimension", Tag.TAG_STRING);
+    requireType(tag, "x", Tag.TAG_DOUBLE);
+    requireType(tag, "y", Tag.TAG_DOUBLE);
+    requireType(tag, "z", Tag.TAG_DOUBLE);
+    requireType(tag, "yaw", Tag.TAG_FLOAT);
+    requireType(tag, "pitch", Tag.TAG_FLOAT);
+    requireType(tag, "health", Tag.TAG_FLOAT);
+    requireType(tag, "food", Tag.TAG_INT);
+    requireType(tag, "saturation", Tag.TAG_FLOAT);
+    requireType(tag, "air", Tag.TAG_INT);
+    requireType(tag, "fireTicks", Tag.TAG_INT);
+    requireType(tag, "absorption", Tag.TAG_FLOAT);
+    requireType(tag, "effects", Tag.TAG_LIST);
     ResourceLocation dimensionId = ResourceLocation.tryParse(tag.getString("dimension"));
-    if (dimensionId == null) {
+    double x = tag.getDouble("x");
+    double y = tag.getDouble("y");
+    double z = tag.getDouble("z");
+    float yaw = tag.getFloat("yaw");
+    float pitch = tag.getFloat("pitch");
+    float health = tag.getFloat("health");
+    int food = tag.getInt("food");
+    float saturation = tag.getFloat("saturation");
+    int air = tag.getInt("air");
+    int fireTicks = tag.getInt("fireTicks");
+    float absorption = tag.getFloat("absorption");
+    if (dimensionId == null || !finite(x) || !finite(y) || !finite(z) || !Float.isFinite(yaw)
+        || !Float.isFinite(pitch) || !Float.isFinite(health) || !Float.isFinite(saturation)
+        || !Float.isFinite(absorption) || Math.abs(x) > MAX_HORIZONTAL_COORDINATE
+        || Math.abs(z) > MAX_HORIZONTAL_COORDINATE || Math.abs(y) > MAX_ABSOLUTE_STORED_Y
+        || pitch < -90.0F || pitch > 90.0F || health <= 0.0F || health > MAX_STORED_HEALTH
+        || food < 0 || food > 20 || saturation < 0.0F || saturation > 20.0F
+        || air < 0 || air > MAX_STORED_AIR || fireTicks < 0 || fireTicks > MAX_STORED_FIRE_TICKS
+        || absorption < 0.0F || absorption > MAX_STORED_ABSORPTION) {
       throw new IllegalArgumentException("Invalid snapshot dimension");
     }
+    ListTag storedEffects = (ListTag) tag.get("effects");
+    if (!storedEffects.isEmpty() && storedEffects.getElementType() != Tag.TAG_COMPOUND) {
+      throw new IllegalArgumentException("Snapshot effects must be compounds");
+    }
     List<MobEffectInstance> effects = new ArrayList<>();
-    for (Tag effectTag : tag.getList("effects", Tag.TAG_COMPOUND)) {
-      MobEffectInstance effect = MobEffectInstance.load((CompoundTag) effectTag);
+    for (Tag effectTag : storedEffects) {
+      MobEffectInstance effect;
+      try {
+        effect = MobEffectInstance.load((CompoundTag) effectTag);
+      } catch (RuntimeException exception) {
+        throw new IllegalArgumentException("Invalid snapshot effect", exception);
+      }
       if (effect != null && isManagedEffect(effect)) {
         effects.add(effect);
       }
     }
     return new TemporalSnapshot(ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, dimensionId),
-        tag.getDouble("x"), tag.getDouble("y"), tag.getDouble("z"), tag.getFloat("yaw"),
-        tag.getFloat("pitch"), tag.getFloat("health"), tag.getInt("food"), tag.getFloat("saturation"),
-        tag.getInt("air"), tag.getInt("fireTicks"), tag.getFloat("absorption"), effects);
+        x, y, z, yaw, pitch, health, food, saturation, air, fireTicks, absorption, effects);
+  }
+
+  private static void requireType(CompoundTag tag, String key, int type) {
+    if (!tag.contains(key, type)) {
+      throw new IllegalArgumentException("Missing or incorrectly typed snapshot field: " + key);
+    }
+  }
+
+  private static boolean finite(double value) {
+    return Double.isFinite(value);
   }
 }

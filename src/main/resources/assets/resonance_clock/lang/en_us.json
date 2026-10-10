@@ -1,5 +1,6 @@
 {
   "item.resonance_clock.resonance_relic": "Resonance Relic",
+  "item.resonance_clock.temporal_purifier": "Temporal Purifier",
   "key.categories.resonance_clock": "Resonance Clock",
   "key.resonance_clock.temporal_twist": "Temporal Twist",
   "message.resonance_clock.twist.disabled": "Temporal Twist is disabled on this server",
@@ -11,5 +12,21 @@
   "message.resonance_clock.twist.dimension": "Temporal Twist failed: the anchored dimension is unavailable",
   "message.resonance_clock.twist.unsafe": "Temporal Twist failed: no safe grounded destination was found",
   "message.resonance_clock.twist.invalid_snapshot": "Temporal Twist failed: the anchored state is invalid",
-  "message.resonance_clock.twist.teleport_failed": "Temporal Twist failed: teleportation was not confirmed"
+  "message.resonance_clock.twist.teleport_failed": "Temporal Twist failed: teleportation was not confirmed",
+  "message.resonance_clock.curse.applied": "Temporal Disorder has been applied",
+  "message.resonance_clock.curse.restored": "Temporal Disorder restored your anchored state",
+  "message.resonance_clock.curse.restore_failed": "Temporal Disorder could not restore your anchored state",
+  "message.resonance_clock.curse.none": "You have no Temporal Disorder to clear",
+  "message.resonance_clock.curse.cleared": "Temporal Disorder has been cleared",
+  "command.resonance_clock.curse.result": "%s: %s",
+  "command.resonance_clock.curse.result.applied": "Temporal Disorder applied",
+  "command.resonance_clock.curse.result.twist_active": "cannot apply while Temporal Twist is active",
+  "command.resonance_clock.curse.result.already_cursed": "already has Temporal Disorder",
+  "command.resonance_clock.status": "%s: Temporal Disorder is %s; %s online ticks remaining",
+  "command.resonance_clock.status.active": "active",
+  "command.resonance_clock.status.inactive": "inactive",
+  "command.resonance_clock.clear.result": "Cleared Temporal Disorder from %s player(s)",
+  "command.resonance_clock.debug.enabled": "Resonance Clock debug logging enabled for this server session",
+  "command.resonance_clock.debug.disabled": "Resonance Clock debug logging disabled for this server session",
+  "command.resonance_clock.debug.status": "%s: debug=%s, equipped=%s, globalTick=%s, entityTick=%s, throttleLast=%s, anchor=%s, remaining=%s, executing=%s, cooldown=%s, curseActive=%s, curseRemaining=%s, temporalVersion=%s, curseVersion=%s"
 }

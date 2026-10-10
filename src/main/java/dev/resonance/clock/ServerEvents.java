@@ -4,6 +4,8 @@ import dev.resonance.clock.config.ServerConfig;
 import dev.resonance.clock.flight.FlightController;
 import dev.resonance.clock.state.TemporalState;
 import dev.resonance.clock.state.TemporalTwistService;
+import dev.resonance.clock.state.TemporalCurseService;
+import dev.resonance.clock.state.TemporalCurseState;
 import dev.resonance.clock.state.RelicState;
 import dev.resonance.clock.network.ModNetwork;
 import net.minecraft.server.level.ServerPlayer;
@@ -12,15 +14,22 @@ import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStoppingEvent;
+import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 public final class ServerEvents {
   @SubscribeEvent
+  public void onRegisterCommands(RegisterCommandsEvent event) {
+    dev.resonance.clock.command.ResonanceCommands.register(event.getDispatcher());
+  }
+
+  @SubscribeEvent
   public void onPlayerTick(TickEvent.PlayerTickEvent event) {
     if (event.phase == TickEvent.Phase.END && event.player instanceof ServerPlayer player) {
       FlightController.tick(player);
       TemporalTwistService.tick(player);
+      TemporalCurseService.tick(player);
     }
   }
 
@@ -46,6 +55,7 @@ public final class ServerEvents {
     if (event.getOriginal() instanceof ServerPlayer original && event.getEntity() instanceof ServerPlayer replacement) {
       event.getOriginal().reviveCaps();
       TemporalState.copyOnRespawn(original, replacement);
+      TemporalCurseState.copyOnRespawn(original, replacement);
       event.getOriginal().invalidateCaps();
       TemporalTwistService.cancel(replacement, "death");
       FlightController.clearResidualLease(replacement);

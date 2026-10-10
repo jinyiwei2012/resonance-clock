@@ -1,10 +1,7 @@
 package dev.resonance.clock.network;
 
 import dev.resonance.clock.ResonanceClock;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.NetworkDirection;
@@ -19,7 +16,8 @@ public final class ModNetwork {
   public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
        new ResourceLocation(ResonanceClock.MOD_ID, "main"), () -> VERSION, VERSION::equals, VERSION::equals);
   private static final int REQUEST_INTERVAL_TICKS = 10;
-  private static final Map<UUID, Integer> LAST_REQUEST_TICK = new HashMap<>();
+  private static final RequestThrottle TEMPORAL_TWIST_THROTTLE =
+      new RequestThrottle(REQUEST_INTERVAL_TICKS);
 
   public static void register() {
     CHANNEL.registerMessage(0, RequestTemporalTwistPacket.class, RequestTemporalTwistPacket::encode,
@@ -42,17 +40,26 @@ public final class ModNetwork {
 
   /** Rejects burst requests before they enter the temporal action path. */
   public static boolean acceptTemporalTwistRequest(ServerPlayer player) {
-    int currentTick = player.tickCount;
-    Integer previousTick = LAST_REQUEST_TICK.get(player.getUUID());
-    if (previousTick != null && currentTick - previousTick < REQUEST_INTERVAL_TICKS) {
+    if (player.getServer() == null) {
       return false;
     }
-    LAST_REQUEST_TICK.put(player.getUUID(), currentTick);
-    return true;
+    long currentTick = player.getServer().overworld().getGameTime();
+    return TEMPORAL_TWIST_THROTTLE.tryAccept(player.getUUID(), currentTick);
+  }
+
+  /** Returns the current global server clock used by the temporal request throttle. */
+  public static long temporalTwistRequestClock(ServerPlayer player) {
+    return player.getServer() == null ? -1L : player.getServer().overworld().getGameTime();
+  }
+
+  /** Returns the last accepted request clock for diagnostics without changing throttle state. */
+  public static long lastAcceptedTemporalTwistRequestClock(ServerPlayer player) {
+    Long tick = TEMPORAL_TWIST_THROTTLE.getLastAcceptedTick(player.getUUID());
+    return tick == null ? -1L : tick;
   }
 
   public static void clearPlayerRequestState(ServerPlayer player) {
-    LAST_REQUEST_TICK.remove(player.getUUID());
+    TEMPORAL_TWIST_THROTTLE.clear(player.getUUID());
   }
 
   private ModNetwork() {}
