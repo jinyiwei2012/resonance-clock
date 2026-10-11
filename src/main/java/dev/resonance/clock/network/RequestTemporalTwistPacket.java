@@ -20,10 +20,17 @@ public final class RequestTemporalTwistPacket {
     context.enqueueWork(() -> {
       ServerPlayer sender = context.getSender();
       if (sender != null) {
-        boolean accepted = ModNetwork.acceptTemporalTwistRequest(sender);
-        ResonanceDebug.logTemporalTwistRequest(sender, accepted);
-        if (accepted) {
-          ServerActions.requestTemporalTwist(sender);
+        long requestId = ResonanceDebug.beginServerRequest();
+        try {
+          boolean accepted = ModNetwork.acceptTemporalTwistRequest(sender);
+          Object startResult = null;
+          if (accepted) {
+            startResult = ServerActions.requestTemporalTwist(sender);
+          }
+          ResonanceDebug.logRequestResult(sender, requestId, accepted, startResult);
+        } catch (RuntimeException exception) {
+          ResonanceDebug.logException("request-server-enqueued", sender, exception);
+          throw exception;
         }
       }
     });

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 — Diagnostic trace patch
+
+- Expanded the session-only operator diagnostics to record sampled full local stack snapshots at key server request, lifecycle, and restore-result boundaries.
+- Added correlated request IDs, explicit accepted/rejected throttle results, actual Temporal Twist start results, state-root types, validation outcomes, and restore results.
+- Preserved complete exception causes and suppressed exceptions through SLF4J throwable logging without changing exception propagation or gameplay behavior.
+- Kept the 0.2.0 death/135-second regression fix intact; this release is observational only.
+
 ## 0.2.0 — Temporal Disorder
 
 - Added persistent Temporal Disorder curses with configurable online-tick rewind cycles.

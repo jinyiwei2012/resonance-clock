@@ -1,6 +1,7 @@
 package dev.resonance.clock.state;
 
 import dev.resonance.clock.config.ServerConfig;
+import dev.resonance.clock.debug.ResonanceDebug;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -53,6 +54,7 @@ public final class TemporalCurseService {
       try {
         result = TemporalRestoreExecutor.restore(player, TemporalSnapshot.load(state.getCompound("snapshot")));
       } catch (RuntimeException exception) {
+        ResonanceDebug.logException("curse-restore-exception", player, exception);
         result = TemporalRestoreExecutor.Result.INVALID_SNAPSHOT;
       }
       restartCycle(state);
@@ -60,6 +62,7 @@ public final class TemporalCurseService {
           result == TemporalRestoreExecutor.Result.RESTORED
               ? "message.resonance_clock.curse.restored"
               : "message.resonance_clock.curse.restore_failed"), false);
+      ResonanceDebug.logRestoreResult(player, "curse", result);
     }
   }
 

@@ -45,7 +45,8 @@ public final class TemporalCurseState {
     return validate(player.getPersistentData()) == Validation.ACTIVE;
   }
 
-  static Validation validate(CompoundTag persistent) {
+  /** Validates an existing root without creating or mutating persistent state. */
+  public static Validation validate(CompoundTag persistent) {
     if (!persistent.contains(ROOT)) {
       return Validation.INACTIVE;
     }

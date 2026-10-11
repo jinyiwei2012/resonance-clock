@@ -2,11 +2,16 @@
 
 ## 已完成
 
+- 0.2.1 在 Java 17 下执行 `gradlew build --offline --no-daemon`；本轮独立构建日志保存在忽略的 `verification/V021_RELEASE_BUILD.log`。发布 JAR 元数据声明版本 `0.2.1`、许可证 `MIT`、Curios 依赖范围 `[5.14.1,6)`。
+- 0.2.1 的 OP 2 会话调试默认关闭，可使用 `/resonance_clock debug on|off|status [target]`。开启后，服务端会记录采样后的本地现场 stack、请求 ID、线程、时钟、装备/锚点/冷却/校验状态、实际 Temporal Twist start result，以及带 `feature=twist` 或 `feature=curse` 的 restore result。异常以原始 Throwable 写入，保留 cause 与 suppressed 链。
+- 诊断 callback 的 `RuntimeException` 被隔离，不影响玩法提交、锚点清理、冷却写入或原 gameplay exception 的 identity；不吞 VM fatal errors。每 UUID、每 stage 独立使用 20 tick 采样并在下一次放行时汇总略过数量；生产请求限流仍为 10 tick。
+- ignored 的独立 SLF4J/Log4j probe 验证了与生产相同 logger 调用形式输出现场 Throwable、cause 和 suppressed；它不是真人生产 hook 测试。纯 helper harness 覆盖诊断隔离、异常 identity、stage 分类采样、回拨和清理。
+- Forge GameTest Server 实际执行并通过 5/5 个既有状态测试。调试 hook 不改变网络消息 ID 或线格式，通道协议仍为 `1`。
 - 0.1.0 曾完成 Java 17 构建和开发专服启动验证；其旧产物哈希已被 0.2.0 产物取代。
 - 开发专服使用 Forge 47.4.5 和 Curios 5.14.1+1.20.1 启动。为 userdev 环境配置了 Mixin refmap 重映射，日志显示 Curios refmap 已重映射，服务器到达 `Done`。
 - 此次服务器启动在隔离工作目录、环回地址和独立测试世界中进行，未使用生产世界数据。
 
-## 0.2.0 验证边界
+## 0.2.0 继承验证边界
 
 - GameTest 测试源已编译，覆盖严格字段类型和必填校验、NaN/Infinity/越界坐标拒绝、未知状态版本、诅咒 clone/清除，以及周期冻结和失败重置。
 - Java 17 下最终 `gradlew build --offline --no-daemon` 成功，日志记录 `BUILD SUCCESSFUL in 26s`；日志保存在忽略的 `verification` 目录，不记录下载代理。
@@ -28,6 +33,7 @@
 
 - 发布 JAR 的完整安装和加载
 - 客户端加载、实际渲染和视觉验收
+- 真人客户端按键/网络请求、死亡重生、多人与完整整合包中的 0.2.1 诊断 hook；服务端现场 stack 不能证明客户端调用链或形成完整跨异步调用链
 - Curios 实际槽位行为
 - 多人状态同步和核心玩法场景
 - 现有客户端状态同步 packet/API seam 尚未接入实际发送和客户端 sink 注册；当前客户端功能不依赖该 seam，但不得将其描述为已验证的同步功能

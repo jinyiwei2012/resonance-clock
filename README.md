@@ -21,7 +21,7 @@ Windows 可使用：
 gradlew.bat build
 ```
 
-当前版本为 `0.2.0` 测试版。将 Forge、Curios Forge 和构建出的 Mod JAR 放入同一 Forge 实例的 `mods` 目录；客户端与服务器应使用相同 Mod 版本。
+当前版本为 `0.2.1` 测试版。将 Forge、Curios Forge 和构建出的 Mod JAR 放入同一 Forge 实例的 `mods` 目录；客户端与服务器应使用相同 Mod 版本。
 
 当前本地 JAR 已由 Java 17 构建，且其 `META-INF/mods.toml` 声明许可证为 `MIT`。
 
@@ -37,7 +37,7 @@ gradlew.bat build
 - 扭结默认持续 10 秒，冷却 30 秒。
 - 默认只放大原版饥饿伤害至 8 倍，不加快饥饿消耗。
 - `flightEnabled` 默认是 `false`。飞行授权使用原版 `mayfly`，无法可靠区分多个来源；若其他 Mod、命令或权限系统也授予飞行，必须保持该开关关闭。
-- 权限等级 2 的管理员可使用 `/resonance_clock debug on|off|status [target]` 临时观察请求限流和时间状态；该工具只读且随服务器停止复位，详见 [运行时调试](docs/debug.md)。
+- 权限等级 2 的管理员可使用 `/resonance_clock debug on|off|status [target]` 临时启用服务端详细现场日志；该工具只读且随服务器停止复位，详见 [运行时调试](docs/debug.md)。
 
 服务器配置由 Forge 在世界的 server config 目录生成，以 `resonance_clock-server.toml` 为准。
 

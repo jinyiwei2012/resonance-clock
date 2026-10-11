@@ -1,6 +1,7 @@
 package dev.resonance.clock.state;
 
 import dev.resonance.clock.config.ServerConfig;
+import dev.resonance.clock.debug.ResonanceDebug;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -105,7 +106,13 @@ public final class TemporalTwistService {
       fail(player, state, "message.resonance_clock.twist.invalid_snapshot");
       return;
     }
-    TemporalRestoreExecutor.Result result = TemporalRestoreExecutor.restore(player, snapshot);
+    TemporalRestoreExecutor.Result result;
+    try {
+      result = TemporalRestoreExecutor.restore(player, snapshot);
+    } catch (RuntimeException exception) {
+      ResonanceDebug.logException("restore-exception", player, exception);
+      throw exception;
+    }
     if (result != TemporalRestoreExecutor.Result.RESTORED) {
       fail(player, state, switch (result) {
         case DIMENSION_UNAVAILABLE -> "message.resonance_clock.twist.dimension";
@@ -114,11 +121,13 @@ public final class TemporalTwistService {
         case TELEPORT_FAILED -> "message.resonance_clock.twist.teleport_failed";
         case RESTORED -> throw new IllegalStateException("Unexpected successful failure result");
       });
+      ResonanceDebug.logRestoreResult(player, "twist", result);
       return;
     }
     TemporalState.clearAnchor(state);
     state.putInt("cooldownTicks", ServerConfig.TWIST_COOLDOWN_TICKS.get());
     player.displayClientMessage(Component.translatable("message.resonance_clock.twist.restored"), true);
+    ResonanceDebug.logRestoreResult(player, "twist", result);
   }
 
   private static void fail(ServerPlayer player, CompoundTag state, String messageKey) {
