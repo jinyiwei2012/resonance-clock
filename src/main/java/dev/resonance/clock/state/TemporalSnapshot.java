@@ -32,6 +32,8 @@ public record TemporalSnapshot(
   private static final double MAX_HORIZONTAL_COORDINATE = 29_999_984.0D;
   private static final double MAX_ABSOLUTE_STORED_Y = 20_000_000.0D;
   private static final float MAX_STORED_HEALTH = 1_000_000.0F;
+  private static final int MAX_STORED_FOOD = 1_000_000;
+  private static final float MAX_STORED_SATURATION = 1_000_000.0F;
   private static final int MAX_STORED_AIR = 1_000_000;
   private static final int MAX_STORED_FIRE_TICKS = 1_728_000;
   private static final float MAX_STORED_ABSORPTION = 1_000_000.0F;
@@ -114,19 +116,23 @@ public record TemporalSnapshot(
     int air = tag.getInt("air");
     int fireTicks = tag.getInt("fireTicks");
     float absorption = tag.getFloat("absorption");
-    if (dimensionId == null || !finite(x) || !finite(y) || !finite(z) || !Float.isFinite(yaw)
-        || !Float.isFinite(pitch) || !Float.isFinite(health) || !Float.isFinite(saturation)
-        || !Float.isFinite(absorption) || Math.abs(x) > MAX_HORIZONTAL_COORDINATE
-        || Math.abs(z) > MAX_HORIZONTAL_COORDINATE || Math.abs(y) > MAX_ABSOLUTE_STORED_Y
-        || pitch < -90.0F || pitch > 90.0F || health <= 0.0F || health > MAX_STORED_HEALTH
-        || food < 0 || food > 20 || saturation < 0.0F || saturation > 20.0F
-        || air < 0 || air > MAX_STORED_AIR || fireTicks < 0 || fireTicks > MAX_STORED_FIRE_TICKS
-        || absorption < 0.0F || absorption > MAX_STORED_ABSORPTION) {
-      throw new IllegalArgumentException("Invalid snapshot dimension");
-    }
+    require(dimensionId != null, "dimension", "valid resource location");
+    require(finite(x) && Math.abs(x) <= MAX_HORIZONTAL_COORDINATE, "x", "finite world coordinate");
+    require(finite(y) && Math.abs(y) <= MAX_ABSOLUTE_STORED_Y, "y", "finite world coordinate");
+    require(finite(z) && Math.abs(z) <= MAX_HORIZONTAL_COORDINATE, "z", "finite world coordinate");
+    require(Float.isFinite(yaw), "yaw", "finite float");
+    require(Float.isFinite(pitch), "pitch", "finite float");
+    require(Float.isFinite(health) && health > 0.0F && health <= MAX_STORED_HEALTH, "health", "positive bounded float");
+    require(food >= 0 && food <= MAX_STORED_FOOD, "food", "non-negative bounded int");
+    require(Float.isFinite(saturation) && saturation >= 0.0F && saturation <= MAX_STORED_SATURATION,
+        "saturation", "non-negative bounded float");
+    require(Math.abs((long) air) <= MAX_STORED_AIR, "air", "bounded int");
+    require(Math.abs((long) fireTicks) <= MAX_STORED_FIRE_TICKS, "fireTicks", "bounded int");
+    require(Float.isFinite(absorption) && absorption >= 0.0F && absorption <= MAX_STORED_ABSORPTION,
+        "absorption", "non-negative bounded float");
     ListTag storedEffects = (ListTag) tag.get("effects");
     if (!storedEffects.isEmpty() && storedEffects.getElementType() != Tag.TAG_COMPOUND) {
-      throw new IllegalArgumentException("Snapshot effects must be compounds");
+      throw invalid("effects", "list of compounds");
     }
     List<MobEffectInstance> effects = new ArrayList<>();
     for (Tag effectTag : storedEffects) {
@@ -134,7 +140,8 @@ public record TemporalSnapshot(
       try {
         effect = MobEffectInstance.load((CompoundTag) effectTag);
       } catch (RuntimeException exception) {
-        throw new IllegalArgumentException("Invalid snapshot effect", exception);
+        throw new SnapshotValidationException(SnapshotValidationException.Reason.INVALID_EFFECT,
+            "effects", "valid effect compound", "invalid compound");
       }
       if (effect != null && isManagedEffect(effect)) {
         effects.add(effect);
@@ -145,9 +152,38 @@ public record TemporalSnapshot(
   }
 
   private static void requireType(CompoundTag tag, String key, int type) {
-    if (!tag.contains(key, type)) {
-      throw new IllegalArgumentException("Missing or incorrectly typed snapshot field: " + key);
+    if (!tag.contains(key)) {
+      throw new SnapshotValidationException(SnapshotValidationException.Reason.MISSING_FIELD,
+          key, tagTypeName(type), "absent");
     }
+    if (!tag.contains(key, type)) {
+      throw new SnapshotValidationException(SnapshotValidationException.Reason.WRONG_TYPE,
+          key, tagTypeName(type), tagTypeName(tag.get(key).getId()));
+    }
+  }
+
+  private static void require(boolean valid, String field, String expected) {
+    if (!valid) {
+      throw invalid(field, expected);
+    }
+  }
+
+  private static SnapshotValidationException invalid(String field, String expected) {
+    return new SnapshotValidationException(SnapshotValidationException.Reason.INVALID_VALUE,
+        field, expected, "rejected");
+  }
+
+  private static String tagTypeName(int type) {
+    return switch (type) {
+      case Tag.TAG_BYTE -> "byte";
+      case Tag.TAG_INT -> "int";
+      case Tag.TAG_FLOAT -> "float";
+      case Tag.TAG_DOUBLE -> "double";
+      case Tag.TAG_STRING -> "string";
+      case Tag.TAG_LIST -> "list";
+      case Tag.TAG_COMPOUND -> "compound";
+      default -> "tag(" + type + ")";
+    };
   }
 
   private static boolean finite(double value) {

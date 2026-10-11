@@ -13,6 +13,9 @@ public final class TemporalCurseState {
 
   public enum Validation { INACTIVE, ACTIVE, INVALID }
 
+  public record ValidationDetail(Validation validation, String reason, String field,
+                                 String expected, String actual) {}
+
   public static CompoundTag get(ServerPlayer player) {
     if (player.getPersistentData().contains(ROOT)
         && !player.getPersistentData().contains(ROOT, Tag.TAG_COMPOUND)) {
@@ -47,31 +50,47 @@ public final class TemporalCurseState {
 
   /** Validates an existing root without creating or mutating persistent state. */
   public static Validation validate(CompoundTag persistent) {
+    return validateDetailed(persistent).validation();
+  }
+
+  public static ValidationDetail validateDetailed(CompoundTag persistent) {
     if (!persistent.contains(ROOT)) {
-      return Validation.INACTIVE;
+      return detail(Validation.INACTIVE, "absent", "root", "absent", "absent");
     }
     if (!persistent.contains(ROOT, Tag.TAG_COMPOUND)) {
-      return Validation.INVALID;
+      return detail(Validation.INVALID, "wrong_type", "root", "compound", typeName(persistent.get(ROOT)));
     }
     CompoundTag state = persistent.getCompound(ROOT);
     if (!state.contains("version", Tag.TAG_INT) || state.getInt("version") != DATA_VERSION) {
-      return Validation.INVALID;
+      return detail(Validation.INVALID, "version", "version", "int " + DATA_VERSION, "unsupported");
     }
     if (!state.contains("snapshot")) {
-      return Validation.INACTIVE;
+      return detail(Validation.INACTIVE, "inactive", "snapshot", "absent", "absent");
     }
     if (!state.contains("snapshot", Tag.TAG_COMPOUND)
         || !state.contains("remainingTicks", Tag.TAG_INT)
         || state.getInt("remainingTicks") < 0
         || !state.contains("executing", Tag.TAG_BYTE)) {
-      return Validation.INVALID;
+      return detail(Validation.INVALID, "required_field", "anchor", "typed snapshot and state fields", "rejected");
     }
     try {
       TemporalSnapshot.load(state.getCompound("snapshot"));
-      return Validation.ACTIVE;
+      return detail(Validation.ACTIVE, "active", "snapshot", "valid", "valid");
+    } catch (SnapshotValidationException exception) {
+      return detail(Validation.INVALID, exception.reason().name().toLowerCase(), exception.field(),
+          exception.expected(), exception.actual());
     } catch (RuntimeException exception) {
-      return Validation.INVALID;
+      return detail(Validation.INVALID, "invalid_snapshot", "snapshot", "valid", "rejected");
     }
+  }
+
+  private static ValidationDetail detail(Validation validation, String reason, String field,
+      String expected, String actual) {
+    return new ValidationDetail(validation, reason, field, expected, actual);
+  }
+
+  private static String typeName(Tag tag) {
+    return tag == null ? "absent" : "tag(" + tag.getId() + ")";
   }
 
   public static void copyOnRespawn(ServerPlayer original, ServerPlayer replacement) {

@@ -2,6 +2,12 @@
 
 ## 已完成
 
+- 0.2.2 在 Java 17 下实际执行 `gradlew.bat --offline --no-daemon runGameTestServer`。日志 `verification/V022_GAMETEST_FINAL.log` 记录发现并执行 7 个 GameTest，`All 7 required tests passed`、`BUILD SUCCESSFUL` 和命令退出码 `0`。覆盖合法 `fireTicks=-1`、负 air、food/saturation 21、pitch 91、旧 version 1 Twist/Curse 根 remaining=200 的 ACTIVE 状态及校验前后 NBT 不变，以及 NaN/Infinity、错误类型与有符号极值拒绝。
+- 该 GameTest 使用直接构造的 `ServerPlayer(server, level, GameProfile)`，显式设置 `fireTicks=-1`、负 air、food/saturation 21 与 pitch 91，验证 `capture -> save -> load` 并逐项对照捕获字段。它证明 capture 保留这些合法值，不证明构造玩家的默认值，也不证明有连接的真人客户端请求、倒计时或传送流程。
+- 先前红测日志 `verification/V022_GAMETEST_OLD_RED.log` 如实保留：旧校验拒绝 `fireTicks=-1`；`makeMockServerPlayerInLevel` fixture 因无 Netty channel 失败，不作为传送结论。0.2.2 改用无连接需求的直接 ServerPlayer capture fixture。
+- 0.2.2 最终 `gradlew.bat --offline --no-daemon build` 成功，日志 `verification/V022_BUILD_FINAL.log` 记录 `BUILD SUCCESSFUL` 和退出码 `0`。产物 `build/libs/resonance_clock-0.2.2.jar` 的 SHA-256 为 `B1E258FBAA788F4770BC4BA715C6265742710C63A1D6DACCB80EABE7C15FB4BE`，CRC-32 为 `8A0230E0`；`META-INF/mods.toml` 声明版本 `0.2.2`、许可证 `MIT`、Curios `[5.14.1,6)`。完整元数据证据在 `verification/V022_FINAL_JAR_EVIDENCE.txt`。
+- 0.2.2 的最小服务端装备门槛已通过：实际 GameTest 发现并执行 8 个测试，记录 `All 8 required tests passed`、`BUILD SUCCESSFUL` 与退出码 `0`，日志保存在忽略的 `verification/V022_SLOT_GAMETEST_FINAL.log`。独立槽测试读取 Curios entity manager 的 player slot（size 1），从直接构造的服务端玩家取得实际 capability handler，验证 `isItemValid` 接受 relic、拒绝 purifier，`insertItem` 后 `RelicState.isEquipped` 为真。它不证明 Curios GUI、真人网络或任意第三方槽位 Mod 并存；本轮不发布，待独立复核。
+- 0.2.2 新增数据包资源 `data/resonance_clock/curios/slots/resonance_clock.json`、`data/resonance_clock/curios/entities/player.json` 与 `data/curios/tags/items/resonance_clock.json`，为玩家注册一个仅接受共鸣遗物的独立 Curios 槽，且不替换 `charm`。本地 Curios 5.14.1 字节码确认 reload 目录为 `curios/slots` 与 `curios/entities`，其中资源命名空间决定数据文件实际路径。最小服务端槽链已通过；测试环境未配置 `charm`，所以不能将其缺失误判为本 Mod 覆盖。GUI 操作仍未验证，但不阻止预发布测试版；正式发布仍应完成独立复核。
 - 0.2.1 在 Java 17 下执行 `gradlew build --offline --no-daemon`；本轮独立构建日志保存在忽略的 `verification/V021_RELEASE_BUILD.log`。发布 JAR 元数据声明版本 `0.2.1`、许可证 `MIT`、Curios 依赖范围 `[5.14.1,6)`。
 - 0.2.1 的 OP 2 会话调试默认关闭，可使用 `/resonance_clock debug on|off|status [target]`。开启后，服务端会记录采样后的本地现场 stack、请求 ID、线程、时钟、装备/锚点/冷却/校验状态、实际 Temporal Twist start result，以及带 `feature=twist` 或 `feature=curse` 的 restore result。异常以原始 Throwable 写入，保留 cause 与 suppressed 链。
 - 诊断 callback 的 `RuntimeException` 被隔离，不影响玩法提交、锚点清理、冷却写入或原 gameplay exception 的 identity；不吞 VM fatal errors。每 UUID、每 stage 独立使用 20 tick 采样并在下一次放行时汇总略过数量；生产请求限流仍为 10 tick。

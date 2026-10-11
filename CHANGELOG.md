@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.2 — Pre-release snapshot and Curios compatibility repair
+
+- Fixed valid vanilla `fireTicks = -1` and negative air snapshots being rejected after a Temporal Twist starts.
+- Kept strict NBT typing and bounded-value validation while allowing legal modded food and saturation values above vanilla's normal cap.
+- Added field-level, non-sensitive validation diagnostics for Temporal Twist and Temporal Disorder debug snapshots.
+- Added a size-one, relic-only `resonance_clock` Curios slot for players, without replacing the existing `charm` compatibility path.
+- The 0.2.0 death/respawn timing fix remains unchanged.
+
 ## 0.2.1 — Diagnostic trace patch
 
 - Expanded the session-only operator diagnostics to record sampled full local stack snapshots at key server request, lifecycle, and restore-result boundaries.

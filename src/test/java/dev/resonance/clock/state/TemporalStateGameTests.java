@@ -1,6 +1,9 @@
 package dev.resonance.clock.state;
 
 import java.util.List;
+import java.util.Map;
+import com.mojang.authlib.GameProfile;
+import java.util.UUID;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
@@ -8,8 +11,17 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.gametest.GameTestHolder;
+import top.theillusivec4.curios.api.CuriosApi;
+import top.theillusivec4.curios.api.type.ISlotType;
+import top.theillusivec4.curios.api.type.capability.ICuriosItemHandler;
+import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
+import top.theillusivec4.curios.common.data.CuriosEntityManager;
+import dev.resonance.clock.item.ModItems;
 
 @GameTestHolder("resonance_clock")
 public final class TemporalStateGameTests {
@@ -17,6 +29,38 @@ public final class TemporalStateGameTests {
   public static void validSnapshotRoundTrip(GameTestHelper helper) {
     TemporalSnapshot snapshot = validSnapshot();
     require(helper, snapshot.equals(TemporalSnapshot.load(snapshot.save())), "Valid snapshot changed");
+    helper.succeed();
+  }
+
+  @GameTest(template = "empty", templateNamespace = "resonance_clock", batch = "resonance_clock")
+  public static void fireMinusOneSnapshotRoundTrip(GameTestHelper helper) {
+    TemporalSnapshot snapshot = validSnapshotWith(-1, -1, 21, 21.0F, 91.0F);
+    require(helper, snapshot.equals(TemporalSnapshot.load(snapshot.save())),
+        "Vanilla-compatible fire or air values changed");
+    helper.succeed();
+  }
+
+  @GameTest(template = "empty", templateNamespace = "resonance_clock", batch = "resonance_clock")
+  public static void serverPlayerCaptureRoundTrip(GameTestHelper helper) {
+    ServerPlayer player = new ServerPlayer(helper.getLevel().getServer(), helper.getLevel(),
+        new GameProfile(UUID.randomUUID(), "snapshot-capture-test"));
+    player.setPos(2.25D, -12.0D, 7.5D);
+    player.setYRot(45.0F);
+    player.setXRot(91.0F);
+    player.setAirSupply(-1);
+    player.setRemainingFireTicks(-1);
+    player.getFoodData().setFoodLevel(21);
+    player.getFoodData().setSaturation(21.0F);
+    TemporalSnapshot captured = TemporalSnapshot.capture(player);
+    require(helper, captured.fireTicks() == -1, "Capture did not retain vanilla not-on-fire value");
+    require(helper, captured.air() == player.getAirSupply()
+            && captured.food() == player.getFoodData().getFoodLevel()
+            && captured.saturation() == player.getFoodData().getSaturationLevel()
+            && captured.pitch() == player.getXRot() && captured.x() == player.getX()
+            && captured.y() == player.getY() && captured.z() == player.getZ(),
+        "Capture fields differ from server player values");
+    require(helper, captured.equals(TemporalSnapshot.load(captured.save())),
+        "Captured server player snapshot did not round trip");
     helper.succeed();
   }
 
@@ -59,6 +103,12 @@ public final class TemporalStateGameTests {
     CompoundTag badAbsorption = validSnapshot().save();
     badAbsorption.putFloat("absorption", Float.NaN);
     expectInvalid(helper, badAbsorption, "NaN absorption accepted");
+    CompoundTag fireExtreme = validSnapshot().save();
+    fireExtreme.putInt("fireTicks", Integer.MIN_VALUE);
+    expectInvalid(helper, fireExtreme, "Extreme fire ticks accepted");
+    CompoundTag airExtreme = validSnapshot().save();
+    airExtreme.putInt("air", Integer.MIN_VALUE);
+    expectInvalid(helper, airExtreme, "Extreme air accepted");
     helper.succeed();
   }
 
@@ -94,6 +144,27 @@ public final class TemporalStateGameTests {
     unknownTwist.put(TemporalState.ROOT, twist);
     require(helper, TemporalState.validate(unknownTwist) == TemporalState.Validation.INVALID,
         "Unknown twist version accepted");
+    TemporalState.ValidationDetail invalidFood = TemporalState.validateDetailed(activeTwistRootWithWrongFood());
+    require(helper, invalidFood.validation() == TemporalState.Validation.INVALID
+            && "food".equals(invalidFood.field()) && "wrong_type".equals(invalidFood.reason()),
+        "Twist validation lost detailed rejection reason");
+    TemporalCurseState.ValidationDetail invalidCurse = TemporalCurseState.validateDetailed(
+        activeCurseRootWithWrongFood());
+    require(helper, invalidCurse.validation() == TemporalCurseState.Validation.INVALID
+            && "food".equals(invalidCurse.field()) && "wrong_type".equals(invalidCurse.reason()),
+        "Curse validation lost detailed rejection reason");
+    CompoundTag compatibleTwist = activeTwistRoot(200);
+    CompoundTag twistBefore = compatibleTwist.copy();
+    require(helper, TemporalState.validate(compatibleTwist) == TemporalState.Validation.ACTIVE
+            && TemporalState.validateDetailed(compatibleTwist).validation()
+                == TemporalState.Validation.ACTIVE && compatibleTwist.equals(twistBefore),
+        "Compatible twist root changed or became inactive");
+    CompoundTag compatibleCurse = activeCompatibleCurseRoot(200);
+    CompoundTag curseBefore = compatibleCurse.copy();
+    require(helper, TemporalCurseState.validate(compatibleCurse) == TemporalCurseState.Validation.ACTIVE
+            && TemporalCurseState.validateDetailed(compatibleCurse).validation()
+                == TemporalCurseState.Validation.ACTIVE && compatibleCurse.equals(curseBefore),
+        "Compatible curse root changed or became inactive");
     helper.succeed();
   }
 
@@ -121,6 +192,31 @@ public final class TemporalStateGameTests {
     helper.succeed();
   }
 
+  @GameTest(template = "empty", templateNamespace = "resonance_clock", batch = "resonance_clock")
+  public static void independentCuriosSlotEquipsRelic(GameTestHelper helper) {
+    Map<String, ISlotType> configuredSlots = CuriosEntityManager.SERVER.getEntitySlots(EntityType.PLAYER);
+    ISlotType resonanceSlot = configuredSlots.get("resonance_clock");
+    require(helper, resonanceSlot != null && resonanceSlot.getSize() == 1,
+        "Independent resonance slot was not registered with size one");
+    require(helper, !"charm".equals(resonanceSlot.getIdentifier()),
+        "Independent slot unexpectedly replaced the shared charm identifier");
+
+    ServerPlayer player = new ServerPlayer(helper.getLevel().getServer(), helper.getLevel(),
+        new GameProfile(UUID.randomUUID(), "curios-slot-test"));
+    ICuriosItemHandler inventory = CuriosApi.getCuriosInventory(player).orElse(null);
+    require(helper, inventory != null, "Curios capability was not attached to server player");
+    ICurioStacksHandler slotHandler = inventory.getStacksHandler("resonance_clock").orElse(null);
+    require(helper, slotHandler != null && slotHandler.getSlots() == 1,
+        "Independent resonance slot handler was not created");
+    ItemStack relic = new ItemStack(ModItems.RESONANCE_RELIC.get());
+    require(helper, slotHandler.getStacks().isItemValid(0, relic), "Relic failed resonance slot validator");
+    require(helper, !slotHandler.getStacks().isItemValid(0, new ItemStack(ModItems.TEMPORAL_PURIFIER.get())),
+        "Unrelated item passed resonance slot validator");
+    slotHandler.getStacks().insertItem(0, relic, false);
+    require(helper, RelicState.isEquipped(player), "Inserted relic was not recognized as equipped");
+    helper.succeed();
+  }
+
   private static CompoundTag activeCurseRoot(int remainingTicks) {
     CompoundTag persistent = new CompoundTag();
     CompoundTag state = TemporalCurseState.getOrCreate(persistent);
@@ -130,11 +226,60 @@ public final class TemporalStateGameTests {
     return persistent;
   }
 
+  private static CompoundTag activeTwistRootWithWrongFood() {
+    CompoundTag persistent = new CompoundTag();
+    CompoundTag state = new CompoundTag();
+    state.putInt("version", 1);
+    CompoundTag snapshot = validSnapshot().save();
+    snapshot.putString("food", "invalid");
+    state.put("snapshot", snapshot);
+    state.putInt("remainingTicks", 20);
+    state.putBoolean("executing", false);
+    persistent.put(TemporalState.ROOT, state);
+    return persistent;
+  }
+
+  private static CompoundTag activeTwistRoot(int remainingTicks) {
+    CompoundTag persistent = new CompoundTag();
+    CompoundTag state = new CompoundTag();
+    state.putInt("version", 1);
+    state.put("snapshot", compatibleSnapshot().save());
+    state.putInt("remainingTicks", remainingTicks);
+    state.putBoolean("executing", false);
+    persistent.put(TemporalState.ROOT, state);
+    return persistent;
+  }
+
+  private static CompoundTag activeCurseRootWithWrongFood() {
+    CompoundTag persistent = activeCurseRoot(20);
+    persistent.getCompound(TemporalCurseState.ROOT).getCompound("snapshot")
+        .putString("food", "invalid");
+    return persistent;
+  }
+
+  private static CompoundTag activeCompatibleCurseRoot(int remainingTicks) {
+    CompoundTag persistent = new CompoundTag();
+    CompoundTag state = TemporalCurseState.getOrCreate(persistent);
+    state.put("snapshot", compatibleSnapshot().save());
+    state.putInt("remainingTicks", remainingTicks);
+    state.putBoolean("executing", false);
+    return persistent;
+  }
+
   private static TemporalSnapshot validSnapshot() {
+    return validSnapshotWith(12, 111, 9, 2.5F, -15.0F);
+  }
+
+  private static TemporalSnapshot compatibleSnapshot() {
+    return validSnapshotWith(-1, -1, 21, 21.0F, 91.0F);
+  }
+
+  private static TemporalSnapshot validSnapshotWith(int fireTicks, int air, int food, float saturation,
+      float pitch) {
     ResourceKey<Level> dimension = ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,
         new ResourceLocation("resonance_clock", "test_dimension"));
-    return new TemporalSnapshot(dimension, 1.25D, 64.0D, -8.5D, 90.0F, -15.0F,
-        7.5F, 9, 2.5F, 111, 12, 3.0F, List.of());
+    return new TemporalSnapshot(dimension, 1.25D, 64.0D, -8.5D, 90.0F, pitch,
+        7.5F, food, saturation, air, fireTicks, 3.0F, List.of());
   }
 
   private static void expectInvalid(GameTestHelper helper, CompoundTag tag, String message) {

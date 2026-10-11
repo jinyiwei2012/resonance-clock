@@ -21,7 +21,7 @@ Windows 可使用：
 gradlew.bat build
 ```
 
-当前版本为 `0.2.1` 测试版。将 Forge、Curios Forge 和构建出的 Mod JAR 放入同一 Forge 实例的 `mods` 目录；客户端与服务器应使用相同 Mod 版本。
+当前版本为 `0.2.2` 预发布测试版。将 Forge、Curios Forge 和构建出的 Mod JAR 放入同一 Forge 实例的 `mods` 目录；不需要 Relics 或 Iron 前置，客户端与服务器应使用相同 Mod 版本。
 
 当前本地 JAR 已由 Java 17 构建，且其 `META-INF/mods.toml` 声明许可证为 `MIT`。
 
@@ -32,7 +32,7 @@ gradlew.bat build
 - `/resonance_clock curse <targets>` 与 `/resonance_clock clear <targets>` 需要权限等级 2；玩家可用 `/resonance_clock status` 自查，管理员可查询其他玩家。
 - 时之紊乱固定记录施加时状态，默认每累计 24000 个在线服务端 tick 回溯一次。死亡、离线或关闭功能时暂停；死亡重生仍保留，牛奶和卸下遗物不会解除。
 - 已有时光扭结时拒绝施加诅咒；成功创建新的时光扭结锚点会原子净化诅咒，失败不会净化。
-- 遗物使用 Curios 的 `charm` 槽位；仅放在普通背包中不会生效。
+- 遗物可使用本 Mod 注册的 Curios `resonance_clock` 独立槽位；已有 `charm` 槽兼容逻辑仍保留。仅放在普通背包中不会生效；请从 Curios 控制设置中查看或绑定界面入口。未验证与所有第三方槽位 Mod 的并存行为。
 - 默认按 `V` 使用“时光扭结”，可在控制设置中重绑。
 - 扭结默认持续 10 秒，冷却 30 秒。
 - 默认只放大原版饥饿伤害至 8 倍，不加快饥饿消耗。
@@ -43,7 +43,7 @@ gradlew.bat build
 
 ## 验证状态
 
-0.1.0 已完成编译与隔离开发专服启动到 `Done` 的验证。0.2.0 的构建、测试及未测边界详见 [验证摘要](docs/verification.md)。
+0.2.2 修复了 0.2.1 将合法原版未着火 `fireTicks = -1`、负 air 和有限 modded food/saturation 快照错误拒绝的问题；现有 version 1 合法锚点可继续倒计时，但已取消的锚点不会恢复。调试仅记录非敏感的校验 reason/field，不记录原始 NBT 或坐标。自动化覆盖服务端 capture 和 Curios capability 实际插入，不证明真人网络、传送或 GUI；详见 [验证摘要](docs/verification.md)。
 
 ## 文档
 

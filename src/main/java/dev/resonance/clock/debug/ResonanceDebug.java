@@ -93,10 +93,14 @@ public final class ResonanceDebug {
       CompoundTag curse = compoundIfPresent(persistent, CURSE_ROOT);
       boolean anchor = temporal != null && temporal.contains("snapshot", Tag.TAG_COMPOUND);
       boolean curseActive = curse != null && curse.contains("snapshot", Tag.TAG_COMPOUND);
+      TemporalState.ValidationDetail temporalDetail = TemporalState.validateDetailed(persistent);
+      TemporalCurseState.ValidationDetail curseDetail = TemporalCurseState.validateDetailed(persistent);
       return new Snapshot(true, RelicState.isEquipped(player), ModNetwork.temporalTwistRequestClock(player),
           player.tickCount, ModNetwork.lastAcceptedTemporalTwistRequestClock(player),
           rootType(persistent, TEMPORAL_ROOT), rootType(persistent, CURSE_ROOT),
-          TemporalState.validate(persistent), TemporalCurseState.validate(persistent), anchor,
+          temporalDetail.validation(), curseDetail.validation(), temporalDetail.reason(), temporalDetail.field(),
+          temporalDetail.expected(), temporalDetail.actual(), curseDetail.reason(), curseDetail.field(),
+          curseDetail.expected(), curseDetail.actual(), anchor,
           anchor ? Math.max(0, temporal.getInt("remainingTicks")) : 0,
           temporal != null && temporal.getBoolean("executing"),
           temporal == null ? 0 : Math.max(0, temporal.getInt("cooldownTicks")), curseActive,
@@ -205,21 +209,28 @@ public final class ResonanceDebug {
 
   public record Snapshot(boolean available, boolean equipped, long globalTick, int entityTick,
                          long throttleLast, String temporalRootType, String curseRootType,
-                         TemporalState.Validation temporalValidation,
-                         TemporalCurseState.Validation curseValidation, boolean anchor,
+                          TemporalState.Validation temporalValidation,
+                          TemporalCurseState.Validation curseValidation, String temporalReason,
+                          String temporalField, String temporalExpected, String temporalActual,
+                          String curseReason, String curseField, String curseExpected, String curseActual,
+                          boolean anchor,
                          int remainingTicks, boolean executing, int cooldownTicks,
                          boolean curseActive, int curseRemainingTicks, boolean curseExecuting,
                          int temporalVersion, int curseVersion) {
     private static Snapshot unavailable() {
-      return new Snapshot(false, false, -1L, -1, -1L, "unavailable", "unavailable", null, null,
-          false, 0, false, 0, false, 0, false, -1, -1);
+        return new Snapshot(false, false, -1L, -1, -1L, "unavailable", "unavailable", null, null,
+            "unavailable", "unavailable", "unavailable", "unavailable", "unavailable", "unavailable",
+            "unavailable", "unavailable", false, 0, false, 0, false, 0, false, -1, -1);
     }
 
     public String describe() {
       return "snapshotAvailable=" + available + " globalTick=" + globalTick + " entityTick=" + entityTick
           + " throttleLast=" + throttleLast + " equipped=" + equipped + " temporalRootType=" + temporalRootType
-          + " curseRootType=" + curseRootType + " temporalValidation=" + temporalValidation
-          + " curseValidation=" + curseValidation + " anchor=" + anchor + " remaining=" + remainingTicks
+           + " curseRootType=" + curseRootType + " temporalValidation=" + temporalValidation
+           + " temporalReason=" + temporalReason + " temporalField=" + temporalField
+           + " temporalExpected=" + temporalExpected + " temporalActual=" + temporalActual
+           + " curseValidation=" + curseValidation + " curseReason=" + curseReason + " curseField=" + curseField
+           + " curseExpected=" + curseExpected + " curseActual=" + curseActual + " anchor=" + anchor + " remaining=" + remainingTicks
           + " executing=" + executing + " cooldown=" + cooldownTicks + " curseActive=" + curseActive
           + " curseRemaining=" + curseRemainingTicks + " curseExecuting=" + curseExecuting
           + " temporalVersion=" + temporalVersion + " curseVersion=" + curseVersion;
