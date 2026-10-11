@@ -1,6 +1,7 @@
 package dev.resonance.clock.state;
 
 import dev.resonance.clock.ResonanceClock;
+import dev.resonance.clock.config.ServerConfig;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerPlayer;
@@ -15,16 +16,19 @@ public final class TemporalState {
   public record ValidationDetail(Validation validation, String reason, String field,
                                  String expected, String actual) {}
 
-  public record PublicState(boolean active, int remainingTicks, int cooldownTicks) {}
+  public record PublicState(boolean active, int remainingTicks, int cooldownTicks,
+                            int resolvedDurationTicks, int resolvedCooldownTicks) {}
 
   public static PublicState publicState(ServerPlayer player) {
     Validation validation = validate(player.getPersistentData());
     if (validation == Validation.INVALID) {
-      return new PublicState(false, 0, 0);
+      return new PublicState(false, 0, 0, 0, 0);
     }
     CompoundTag state = get(player);
-    return new PublicState(state.contains("snapshot"), Math.max(0, state.getInt("remainingTicks")),
-        Math.max(0, state.getInt("cooldownTicks")));
+    boolean active = state.contains("snapshot");
+    return new PublicState(active, Math.max(0, state.getInt("remainingTicks")),
+        Math.max(0, state.getInt("cooldownTicks")),
+        active ? resolvedDurationTicks(state) : 0, active ? resolvedCooldownTicks(state) : 0);
   }
 
   public static CompoundTag get(ServerPlayer player) {
@@ -59,6 +63,15 @@ public final class TemporalState {
           ? detail(Validation.INVALID, "wrong_type", "cooldownTicks", "int",
               typeName(state.get("cooldownTicks")))
           : detail(Validation.INACTIVE, "inactive", "snapshot", "absent", "absent");
+    }
+    if ((state.contains("resolvedDurationTicks")
+            && (!state.contains("resolvedDurationTicks", Tag.TAG_INT)
+                || state.getInt("resolvedDurationTicks") < 0))
+        || (state.contains("resolvedCooldownTicks")
+            && (!state.contains("resolvedCooldownTicks", Tag.TAG_INT)
+                || state.getInt("resolvedCooldownTicks") < 0))) {
+      return detail(Validation.INVALID, "wrong_type", "resolvedTiming", "non-negative ints",
+          "rejected");
     }
     if (!state.contains("snapshot", Tag.TAG_COMPOUND)
         || !state.contains("remainingTicks", Tag.TAG_INT)
@@ -109,6 +122,20 @@ public final class TemporalState {
     state.remove("snapshot");
     state.remove("remainingTicks");
     state.remove("executing");
+    state.remove("resolvedDurationTicks");
+    state.remove("resolvedCooldownTicks");
+  }
+
+  static int resolvedDurationTicks(CompoundTag state) {
+    return state.contains("resolvedDurationTicks", Tag.TAG_INT)
+        ? Math.max(0, state.getInt("resolvedDurationTicks"))
+        : ServerConfig.TWIST_DURATION_TICKS.get();
+  }
+
+  static int resolvedCooldownTicks(CompoundTag state) {
+    return state.contains("resolvedCooldownTicks", Tag.TAG_INT)
+        ? Math.max(0, state.getInt("resolvedCooldownTicks"))
+        : ServerConfig.TWIST_COOLDOWN_TICKS.get();
   }
 
   private TemporalState() {}

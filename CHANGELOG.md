@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0 — Relic forms and stable client contract
+
+- Added persistent BASE and RESONANT relic forms with server-authoritative, equipped-only switching.
+- RESONANT freezes a configurable cooldown multiplier (default `0.5`, range `0.1..1.0`) when Temporal Twist starts; duration and Temporal Disorder are unchanged.
+- Added owner-private state synchronization, tracking-safe form visuals, an authenticated panel-open intent, and protocol version `2`.
+- Added held-relic right-click opening, an optional unbound panel key, local-only visual preferences, and distinct I–XII BASE / moon-phase RESONANT rendering.
+- Default rules remain 10-second duration and 30-second BASE cooldown; RESONANT freezes the next started twist cooldown at the default `0.5` multiplier (15 seconds) until completion or failure.
+- Kept flight disabled by default and retained backward handling for valid 0.2.2 anchors without resolved timing fields.
+- This follows reported 0.2.2 user testing; it does not claim every gameplay or multiplayer scenario is verified.
+- Final ForgeGradle GameTest evidence discovered and passed 19/19 required tests with GameTestServer self-shutdown, `BUILD SUCCESSFUL`, and clean exit `0`.
+- This remains a pre-release test build: human GUI and ACK round trips, two-client tracking visuals, screenshots/FPS, and third-party modpack interoperability remain unverified. Apollon adaptation, time stop, and finisher abilities are not included.
+
 ## 0.2.2 — Pre-release snapshot and Curios compatibility repair
 
 - Fixed valid vanilla `fireTicks = -1` and negative air snapshots being rejected after a Temporal Twist starts.

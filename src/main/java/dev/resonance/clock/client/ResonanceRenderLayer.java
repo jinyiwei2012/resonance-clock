@@ -3,7 +3,9 @@ package dev.resonance.clock.client;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.resonance.clock.ResonanceClock;
-import dev.resonance.clock.state.RelicState;
+import dev.resonance.clock.api.ClientStateSink;
+import dev.resonance.clock.api.FormMode;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -35,11 +37,18 @@ public final class ResonanceRenderLayer<T extends LivingEntity, M extends Player
   public void render(PoseStack poseStack, MultiBufferSource buffers, int packedLight,
                      T entity, float limbSwing, float limbSwingAmount, float partialTick,
                      float ageInTicks, float netHeadYaw, float headPitch) {
-    if (!RelicState.isEquipped(entity)) {
+    ClientStateSink.VisualState visual = ResonanceClientStore.visual(entity.getId());
+    if (visual == null || !visual.equipped()
+        || !ResonanceVisualSettings.SHOW_RING.get() && !ResonanceVisualSettings.SHOW_WINGS.get()) {
+      return;
+    }
+    if (Minecraft.getInstance().cameraEntity != null
+        && entity.distanceToSqr(Minecraft.getInstance().cameraEntity) > 48.0d * 48.0d) {
       return;
     }
 
-    float pulse = 0.92f + 0.08f * (float) Math.sin((entity.tickCount + partialTick) * 0.08f);
+    float pulse = ResonanceVisualSettings.ANIMATION.get()
+        ? 0.92f + 0.08f * (float) Math.sin((entity.tickCount + partialTick) * 0.08f) : 1.0f;
     poseStack.pushPose();
     // Player model units are 1/16 block. The positive Z side is the back.
     poseStack.translate(0.0d, 0.92d, 0.19d);
@@ -47,13 +56,59 @@ public final class ResonanceRenderLayer<T extends LivingEntity, M extends Player
     Matrix4f matrix = poseStack.last().pose();
     Matrix3f normal = poseStack.last().normal();
 
-    drawRing(consumer, matrix, normal, 0.78f, 64, 0.035f, BLUE, 0.72f * pulse);
-    drawRing(consumer, matrix, normal, 0.62f, 48, 0.012f, BRIGHT, 0.54f * pulse);
-    drawTicks(consumer, matrix, normal, 0.69f, 0.77f, 0.018f, 12, BRIGHT, 0.72f * pulse);
-    drawHands(consumer, matrix, normal, ageInTicks, 0.70f * pulse);
-    drawWing(consumer, matrix, normal, -1.0f, pulse);
-    drawWing(consumer, matrix, normal, 1.0f, pulse);
+    if (ResonanceVisualSettings.SHOW_RING.get()) {
+      int outerSegments = ResonanceVisualSettings.SIMPLE_QUALITY.get() ? 32 : 64;
+      if (visual.formMode() == FormMode.BASE) {
+        drawRing(consumer, matrix, normal, 0.78f, outerSegments, 0.035f, BLUE, 0.72f * pulse);
+        drawRing(consumer, matrix, normal, 0.62f, outerSegments / 2, 0.012f, BRIGHT, 0.54f * pulse);
+        drawTicks(consumer, matrix, normal, 0.69f, 0.77f, 0.018f, 12, BRIGHT, 0.72f * pulse);
+        drawHands(consumer, matrix, normal, ageInTicks, 0.70f * pulse);
+      } else {
+        // Resonant is a separate moon-phase orbit: no BASE ticks or inner dial.
+        drawRing(consumer, matrix, normal, 0.80f, outerSegments, 0.030f, BLUE, 0.62f * pulse);
+        drawMoonPhases(consumer, matrix, normal, 0.63f, pulse);
+        drawFlowers(consumer, matrix, normal, pulse);
+      }
+    }
+    if (ResonanceVisualSettings.SHOW_WINGS.get()) {
+      drawWing(consumer, matrix, normal, -1.0f, pulse);
+      drawWing(consumer, matrix, normal, 1.0f, pulse);
+    }
     poseStack.popPose();
+  }
+
+  private static void drawMoonPhases(VertexConsumer out, Matrix4f matrix, Matrix3f normal,
+                                     float orbit, float pulse) {
+    for (int i = 0; i < 12; i++) {
+      float angle = (float) (Math.PI * 2.0 * i / 12.0 - Math.PI / 2.0);
+      float x = (float) Math.cos(angle) * orbit;
+      float y = (float) Math.sin(angle) * orbit;
+      float size = 0.075f;
+      float phase = i / 11.0f;
+      float cut = (phase <= 0.5f ? phase : 1.0f - phase) * 2.0f;
+      triangle(out, matrix, normal, x - size, y, x, y + size, x + size, y,
+          BLUE, (0.32f + cut * 0.34f) * pulse);
+      line(out, matrix, normal, x - size, y, x + size, y, 0.010f, BRIGHT, 0.52f * pulse);
+    }
+  }
+
+  private static void drawFlowers(VertexConsumer out, Matrix4f matrix, Matrix3f normal, float pulse) {
+    drawLeaf(out, matrix, normal, -0.48f, 0.50f, -0.76f, 0.70f, 0.17f, pulse);
+    drawLeaf(out, matrix, normal, -0.28f, 0.65f, -0.12f, 0.84f, 0.15f, pulse);
+    drawLeaf(out, matrix, normal, 0.48f, 0.50f, 0.76f, 0.70f, 0.17f, pulse);
+    drawLeaf(out, matrix, normal, 0.28f, 0.65f, 0.12f, 0.84f, 0.15f, pulse);
+  }
+
+  private static void drawLeaf(VertexConsumer out, Matrix4f matrix, Matrix3f normal,
+                               float x0, float y0, float x1, float y1, float width, float pulse) {
+    line(out, matrix, normal, x0, y0, x1, y1, 0.018f, BRIGHT, 0.60f * pulse);
+    float dx = x1 - x0;
+    float dy = y1 - y0;
+    float length = (float) Math.sqrt(dx * dx + dy * dy);
+    float px = -dy / length * width;
+    float py = dx / length * width;
+    triangle(out, matrix, normal, x0, y0, x1 + px, y1 + py, x1 - px, y1 - py,
+        BLUE, 0.24f * pulse);
   }
 
   private static void drawRing(VertexConsumer out, Matrix4f matrix, Matrix3f normal,
@@ -147,6 +202,8 @@ public final class ResonanceRenderLayer<T extends LivingEntity, M extends Player
     int b = rgb & 255;
     vertex(out, matrix, normal, x0, y0, r, g, b, a, 0, 0);
     vertex(out, matrix, normal, x1, y1, r, g, b, a, 1, 0);
+    vertex(out, matrix, normal, x2, y2, r, g, b, a, 0.5f, 1);
+    // entityTranslucent uses QUADS; duplicate the final corner for a degenerate fourth vertex.
     vertex(out, matrix, normal, x2, y2, r, g, b, a, 0.5f, 1);
   }
 

@@ -21,7 +21,7 @@ Windows 可使用：
 gradlew.bat build
 ```
 
-当前版本为 `0.2.2` 预发布测试版。将 Forge、Curios Forge 和构建出的 Mod JAR 放入同一 Forge 实例的 `mods` 目录；不需要 Relics 或 Iron 前置，客户端与服务器应使用相同 Mod 版本。
+当前版本为 `0.3.0` 预发布测试版。安装 Minecraft 1.20.1、Forge 47.4.5、Curios Forge 5.14.1+ 和 Java 17 后，移除旧版 Resonance Clock JAR，再将本 JAR 放入同一 Forge 实例的 `mods` 目录；升级前请备份世界。客户端与服务器必须使用相同的协议 2 Mod 版本；不需要 Relics 或 Iron 前置。
 
 当前本地 JAR 已由 Java 17 构建，且其 `META-INF/mods.toml` 声明许可证为 `MIT`。
 
@@ -34,7 +34,9 @@ gradlew.bat build
 - 已有时光扭结时拒绝施加诅咒；成功创建新的时光扭结锚点会原子净化诅咒，失败不会净化。
 - 遗物可使用本 Mod 注册的 Curios `resonance_clock` 独立槽位；已有 `charm` 槽兼容逻辑仍保留。仅放在普通背包中不会生效；请从 Curios 控制设置中查看或绑定界面入口。未验证与所有第三方槽位 Mod 的并存行为。
 - 默认按 `V` 使用“时光扭结”，可在控制设置中重绑。
-- 扭结默认持续 10 秒，冷却 30 秒。
+- 手持共鸣遗物右键可打开形态面板；另有默认未绑定的面板按键，可在控制设置中自行绑定。面板视觉设置仅保存在客户端，不修改服务端规则。
+- `BASE` 保留 I–XII 钟盘，默认扭结持续 10 秒、冷却 30 秒；`RESONANT` 使用月相外观，默认将下一次启动的冷却冻结为 0.5 倍（15 秒），持续时间仍为 10 秒。启动后直到完成或失败均使用已冻结参数，途中切换形态不会重算。
+- 形态切换由服务端校验且仅在遗物已装备时生效；多人仅同步装备状态和形态视觉，冷却、诅咒与服务端规则只同步给状态所有者。
 - 默认只放大原版饥饿伤害至 8 倍，不加快饥饿消耗。
 - `flightEnabled` 默认是 `false`。飞行授权使用原版 `mayfly`，无法可靠区分多个来源；若其他 Mod、命令或权限系统也授予飞行，必须保持该开关关闭。
 - 权限等级 2 的管理员可使用 `/resonance_clock debug on|off|status [target]` 临时启用服务端详细现场日志；该工具只读且随服务器停止复位，详见 [运行时调试](docs/debug.md)。
@@ -43,7 +45,7 @@ gradlew.bat build
 
 ## 验证状态
 
-0.2.2 修复了 0.2.1 将合法原版未着火 `fireTicks = -1`、负 air 和有限 modded food/saturation 快照错误拒绝的问题；现有 version 1 合法锚点可继续倒计时，但已取消的锚点不会恢复。调试仅记录非敏感的校验 reason/field，不记录原始 NBT 或坐标。自动化覆盖服务端 capture 和 Curios capability 实际插入，不证明真人网络、传送或 GUI；详见 [验证摘要](docs/verification.md)。
+0.3.0 是测试版而非稳定版。ForgeGradle GameTest 实际发现并通过 19/19 个 required tests，并以 clean exit `0` 结束；覆盖服务端状态、packet codec、Curios capability 与专用 GameTest server 启动。尚未完成真人 GUI/网络 ACK 往返、双客户端多人视觉、传送、截图/FPS 和第三方整合包联动验收，详见 [验证摘要](docs/verification.md)。Apollon 适配、时停与终结技均未实现，保留待后续适配。
 
 ## 文档
 
@@ -52,6 +54,8 @@ gradlew.bat build
 - [后续阶段摘要](docs/roadmap.md)
 - [验证摘要](docs/verification.md)
 - [运行时调试](docs/debug.md)
+- [0.3.0 客户端契约](docs/client-contract.md)
+- [客户端视觉静态核查](docs/client-visual-verification.md)
 - [第三方声明](THIRD_PARTY_NOTICES.md)
 
 原始需求文本、参考图片、模组归档和完整本地诊断记录不随仓库分发。

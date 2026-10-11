@@ -22,6 +22,18 @@ import top.theillusivec4.curios.api.type.capability.ICuriosItemHandler;
 import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
 import top.theillusivec4.curios.common.data.CuriosEntityManager;
 import dev.resonance.clock.item.ModItems;
+import dev.resonance.clock.api.FormMode;
+import dev.resonance.clock.api.ServerActions;
+import dev.resonance.clock.network.RequestSetFormPacket;
+import dev.resonance.clock.network.SyncFormVisualPacket;
+import dev.resonance.clock.network.SyncResonanceStatePacket;
+import dev.resonance.clock.ServerEvents;
+import dev.resonance.clock.api.ClientActionSink;
+import dev.resonance.clock.network.ActionResultPacket;
+import dev.resonance.clock.network.RequestOpenRelicPanelPacket;
+import dev.resonance.clock.network.RequestTemporalTwistPacket;
+import io.netty.buffer.Unpooled;
+import net.minecraft.network.FriendlyByteBuf;
 
 @GameTestHolder("resonance_clock")
 public final class TemporalStateGameTests {
@@ -214,6 +226,160 @@ public final class TemporalStateGameTests {
         "Unrelated item passed resonance slot validator");
     slotHandler.getStacks().insertItem(0, relic, false);
     require(helper, RelicState.isEquipped(player), "Inserted relic was not recognized as equipped");
+    helper.succeed();
+  }
+
+  @GameTest(template = "empty", templateNamespace = "resonance_clock", batch = "resonance_clock")
+  public static void formDefaultsToBase(GameTestHelper helper) {
+    require(helper, FormState.read(new CompoundTag()) == FormMode.BASE, "Absent form did not default BASE");
+    helper.succeed();
+  }
+
+  @GameTest(template = "empty", templateNamespace = "resonance_clock", batch = "resonance_clock")
+  public static void invalidFormVersionAndEnumDefaultBase(GameTestHelper helper) {
+    CompoundTag persistent = new CompoundTag();
+    FormState.write(persistent, FormMode.RESONANT);
+    persistent.getCompound(FormState.ROOT).putInt("version", 2);
+    require(helper, FormState.read(persistent) == FormMode.BASE, "Unknown form version accepted");
+    persistent.getCompound(FormState.ROOT).putInt("version", FormState.DATA_VERSION);
+    persistent.getCompound(FormState.ROOT).putInt("mode", 99);
+    require(helper, FormState.read(persistent) == FormMode.BASE, "Illegal form enum accepted");
+    helper.succeed();
+  }
+
+  @GameTest(template = "empty", templateNamespace = "resonance_clock", batch = "resonance_clock")
+  public static void formCopiesAcrossDeath(GameTestHelper helper) {
+    CompoundTag original = new CompoundTag();
+    CompoundTag replacement = new CompoundTag();
+    FormState.write(original, FormMode.RESONANT);
+    FormState.copyPersistentData(original, replacement);
+    original.getCompound(FormState.ROOT).putInt("mode", FormMode.BASE.ordinal());
+    require(helper, FormState.read(replacement) == FormMode.RESONANT, "Death copy lost or aliased form");
+    helper.succeed();
+  }
+
+  @GameTest(template = "empty", templateNamespace = "resonance_clock", batch = "resonance_clock")
+  public static void formChangeRejectsUnequippedPlayer(GameTestHelper helper) {
+    ServerPlayer player = new ServerPlayer(helper.getLevel().getServer(), helper.getLevel(),
+        new GameProfile(UUID.randomUUID(), "form-equip-reject"));
+    require(helper, ServerActions.requestSetForm(player, FormMode.RESONANT)
+        == ServerActions.SetFormResult.NOT_EQUIPPED && FormState.get(player) == FormMode.BASE,
+        "Unequipped player changed form");
+    helper.succeed();
+  }
+
+  @GameTest(template = "empty", templateNamespace = "resonance_clock", batch = "resonance_clock")
+  public static void resonantCooldownIsFrozen(GameTestHelper helper) {
+    int resolved = TemporalTwistService.resolveCooldownTicks(FormMode.RESONANT, 600, 0.5D);
+    CompoundTag state = new CompoundTag();
+    state.putInt("resolvedCooldownTicks", resolved);
+    require(helper, resolved == 300 && TemporalState.resolvedCooldownTicks(state) == 300,
+        "Resonant cooldown was not resolved and frozen");
+    helper.succeed();
+  }
+
+  @GameTest(template = "empty", templateNamespace = "resonance_clock", batch = "resonance_clock")
+  public static void oldAnchorUsesConfigFallback(GameTestHelper helper) {
+    CompoundTag state = new CompoundTag();
+    require(helper, TemporalState.resolvedDurationTicks(state)
+            == dev.resonance.clock.config.ServerConfig.TWIST_DURATION_TICKS.get()
+        && TemporalState.resolvedCooldownTicks(state)
+            == dev.resonance.clock.config.ServerConfig.TWIST_COOLDOWN_TICKS.get(),
+        "0.2.2 anchor fallback did not use current config");
+    helper.succeed();
+  }
+
+  @GameTest(template = "empty", templateNamespace = "resonance_clock", batch = "resonance_clock")
+  public static void formPacketCodecsAreLegal(GameTestHelper helper) {
+    FriendlyByteBuf requestBuffer = new FriendlyByteBuf(Unpooled.buffer());
+    RequestSetFormPacket.encode(new RequestSetFormPacket(FormMode.RESONANT, 41), requestBuffer);
+    RequestSetFormPacket decodedForm = RequestSetFormPacket.decode(requestBuffer);
+    require(helper, decodedForm.mode() == FormMode.RESONANT && decodedForm.requestSeq() == 41,
+        "Set-form packet changed legal enum");
+    FriendlyByteBuf invalidBuffer = new FriendlyByteBuf(Unpooled.buffer());
+    invalidBuffer.writeVarInt(99);
+    invalidBuffer.writeVarInt(42);
+    RequestSetFormPacket invalidForm = RequestSetFormPacket.decode(invalidBuffer);
+    require(helper, invalidForm.mode() == null && invalidForm.requestSeq() == 42,
+        "Set-form packet accepted illegal enum");
+    FriendlyByteBuf visualBuffer = new FriendlyByteBuf(Unpooled.buffer());
+    SyncFormVisualPacket original = new SyncFormVisualPacket(7, true, FormMode.RESONANT);
+    SyncFormVisualPacket.encode(original, visualBuffer);
+    require(helper, original.equals(SyncFormVisualPacket.decode(visualBuffer)),
+        "Visual state packet failed codec round trip");
+    helper.succeed();
+  }
+
+  @GameTest(template = "empty", templateNamespace = "resonance_clock", batch = "resonance_clock")
+  public static void actionIntentAndResultCodecsPreserveSequence(GameTestHelper helper) {
+    FriendlyByteBuf twistBuffer = new FriendlyByteBuf(Unpooled.buffer());
+    RequestTemporalTwistPacket.encode(new RequestTemporalTwistPacket(101), twistBuffer);
+    require(helper, RequestTemporalTwistPacket.decode(twistBuffer).requestSeq() == 101,
+        "Twist intent lost request sequence");
+    FriendlyByteBuf openBuffer = new FriendlyByteBuf(Unpooled.buffer());
+    RequestOpenRelicPanelPacket.encode(new RequestOpenRelicPanelPacket(102), openBuffer);
+    require(helper, RequestOpenRelicPanelPacket.decode(openBuffer).requestSeq() == 102,
+        "Open intent lost request sequence");
+    ActionResultPacket result = new ActionResultPacket(ClientActionSink.Action.FORM, 103,
+        ClientActionSink.Result.NOT_EQUIPPED);
+    FriendlyByteBuf resultBuffer = new FriendlyByteBuf(Unpooled.buffer());
+    ActionResultPacket.encode(result, resultBuffer);
+    require(helper, result.equals(ActionResultPacket.decode(resultBuffer)),
+        "Action result lost action, status or request sequence");
+    FriendlyByteBuf malformed = new FriendlyByteBuf(Unpooled.buffer());
+    malformed.writeVarInt(99);
+    malformed.writeVarInt(104);
+    malformed.writeVarInt(99);
+    ActionResultPacket rejected = ActionResultPacket.decode(malformed);
+    require(helper, rejected.action() == null && rejected.requestSeq() == 104
+            && rejected.result() == null,
+        "Malformed acknowledgement enum was treated as valid");
+    helper.succeed();
+  }
+
+  @GameTest(template = "empty", templateNamespace = "resonance_clock", batch = "resonance_clock")
+  public static void cooldownSyncContinuesUnequippedAndSendsFinalZero(GameTestHelper helper) {
+    require(helper, ServerEvents.shouldSyncOwnerPeriodic(false, false, false, 19, 20, 20),
+        "Unequipped cooldown stopped periodic owner sync");
+    require(helper, ServerEvents.shouldSyncOwnerPeriodic(false, false, false, 0, 1, 21),
+        "Cooldown transition to zero was not synchronized");
+    require(helper, !ServerEvents.shouldSyncOwnerPeriodic(false, false, false, 0, 0, 40),
+        "Idle player continued periodic owner sync");
+    helper.succeed();
+  }
+
+  @GameTest(template = "empty", templateNamespace = "resonance_clock", batch = "resonance_clock")
+  public static void ownerPacketFullCodecKeepsPrivateRules(GameTestHelper helper) {
+    SyncResonanceStatePacket original = new SyncResonanceStatePacket(9, true, FormMode.RESONANT,
+        true, 81, 241, true, 12000, 200, 300, true, 200, 600, 0.5D, true, 24000,
+        false);
+    FriendlyByteBuf ownerBuffer = new FriendlyByteBuf(Unpooled.buffer());
+    SyncResonanceStatePacket.encode(original, ownerBuffer);
+    require(helper, original.equals(SyncResonanceStatePacket.decode(ownerBuffer)),
+        "Owner state packet lost private server rules");
+
+    SyncFormVisualPacket visual = new SyncFormVisualPacket(9, true, FormMode.RESONANT);
+    FriendlyByteBuf visualBuffer = new FriendlyByteBuf(Unpooled.buffer());
+    SyncFormVisualPacket.encode(visual, visualBuffer);
+    require(helper, visualBuffer.readableBytes() < ownerBuffer.writerIndex(),
+        "Tracking visual packet unexpectedly matched private owner payload size");
+    helper.succeed();
+  }
+
+  @GameTest(template = "empty", templateNamespace = "resonance_clock", batch = "resonance_clock")
+  public static void openPanelRequiresGenuineHeldOrEquippedRelic(GameTestHelper helper) {
+    ServerPlayer player = new ServerPlayer(helper.getLevel().getServer(), helper.getLevel(),
+        new GameProfile(UUID.randomUUID(), "open-panel-auth"));
+    require(helper, !dev.resonance.clock.network.ModNetwork.mayOpenRelicPanel(player),
+        "Empty hands were authorized to open relic panel");
+    player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,
+        new ItemStack(ModItems.TEMPORAL_PURIFIER.get()));
+    require(helper, !dev.resonance.clock.network.ModNetwork.mayOpenRelicPanel(player),
+        "Unrelated held item was authorized to open relic panel");
+    player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,
+        new ItemStack(ModItems.RESONANCE_RELIC.get()));
+    require(helper, dev.resonance.clock.network.ModNetwork.mayOpenRelicPanel(player),
+        "Genuine held relic was rejected for panel opening");
     helper.succeed();
   }
 

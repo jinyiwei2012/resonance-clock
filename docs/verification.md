@@ -1,5 +1,20 @@
 # 验证摘要
 
+## 0.3.0 本轮证据
+
+- 最终 Java 17 ForgeGradle `runGameTestServer --offline --no-daemon` 已完成 clean exit：`verification/V030_GRADLE_GAMETEST_EXIT_DIAG.result.txt` 记录 `exitCode=0`、`runningN=19`、`passedN=19` 和 `buildSuccessful=True`；对应日志记录 `forgegametestserveruserdev`、`19 tests are now running!`、`All 19 required tests passed :)`、服务器自行关闭及 `BUILD SUCCESSFUL in 1m 29s`。这是当前正式 GameTest 证据。
+- 此前直接手工 userdev launcher 的退出码 `1` 诊断仅为历史非正式启动路径，不再阻断本次正式 ForgeGradle GameTest 结果；完整历史记录保留在 ignored 的 `verification/V030_DIRECT_GAMETEST_EXIT_DIAGNOSIS.md`，不将该路径与正式测试结论混同。
+- 当前构建产物 `build/libs/resonance_clock-0.3.0.jar` 大小 `145019` 字节，SHA-256 `EAAF0FFAD6F330ED99E82262C633A1219FACBB726E036C651F9B1DDED314B111`，CRC-32 `D938DD00`。`mods.toml` 声明版本 `0.3.0`、许可证 `MIT`、Curios `[5.14.1,6)`；JAR 包含 `ClientActionSink`、`ActionResultPacket`、完整 owner packet、`FormState`、screen/store/lifecycle、月相共用纹理及三个独立槽核心资源。构建成功不等于真人 ACK 往返、GUI、双客户端或视觉性能已验证。
+- 最终整合在 Java 17 (`C:\Java\jdk-17`) 下执行 `gradlew.bat build --offline --no-daemon`，退出码 `0`，日志 `verification/V030_FINAL_BUILD.log` 记录 `BUILD SUCCESSFUL in 1m 26s`。首次构建暴露并机械修复了 `Screen.rebuildWidgets()` 可见性冲突；最终重跑成功。
+- 最终 `gradlew.bat runGameTestServer --offline --no-daemon` 退出码 `0`，实际发现 18 个测试并记录 `All 18 required tests passed`、`BUILD SUCCESSFUL in 56s`，日志为 `verification/V030_FINAL_GAMETEST.log`。该 dedicated GameTest server 启动路径同时证明 common 初始化未直接加载客户端类。
+- 最终 JAR `build/libs/resonance_clock-0.3.0.jar` 大小 `131312` 字节，SHA-256 `9E7084F7D5CBF5CC587B30B2F1F1233096DD432751C5BFC39F9FF0398190CA46`，CRC-32 `33B703F3`。其中 `mods.toml` 声明版本 `0.3.0`、许可证 `MIT`、Curios 依赖 `[5.14.1,6)`；包含协议 2 的 owner 17 字段 packet、分离 visual packet、客户端 screen/store/settings、双语 lang、纹理/模型和四个 Curios 槽/标签数据文件。
+- Oracle 静态集成审查发现并修复：客户端配置注册时机、owner 第三人称视觉 store、错误事件总线缓存清理、QUADS 三顶点提交，以及小尺寸 GUI 布局。修复后完整 build 与 18 个 GameTest 均重跑通过。
+- Core 契约定稿后的 `compileJava compileTestJava` 于 client writer 尚未终结、尚未合入 client/assets 改动时独立通过；该结果仅证明当时的 common/server 与测试源码可编译，不作为最终客户端集成构建证据。双方改动结束后仍需重新执行完整 build 与 GameTest。
+- Java 17 下执行 `gradlew.bat --offline --no-daemon build` 成功，日志为忽略的 `verification/V030_BUILD.log`，记录 `BUILD SUCCESSFUL in 1m 9s`。
+- Java 17 下执行 `gradlew.bat --offline --no-daemon runGameTestServer`，实际发现并执行 15 个 GameTest，日志为忽略的 `verification/V030_GAMETEST.log`，记录 `All 15 required tests passed` 与 `BUILD SUCCESSFUL in 1m 3s`。
+- 新增自动化覆盖 BASE 默认值、未知持久版本/非法枚举回退、死亡数据深拷贝、未装备切换拒绝、RESONANT 冷却冻结计算、0.2.2 旧锚点缺少 resolved 字段时的配置回退，以及形态请求/视觉状态 codec。既有 8 个测试保留。
+- 这些测试证明纯服务端状态规则、NBT/codec 与实际 Curios capability 最小链；不证明真人连接的数据包线程、GUI、多人追踪视觉、传送或所有整合包场景。0.2.2 的用户实测问题已报告修复，但不据此宣称所有场景已验证。
+
 ## 已完成
 
 - 0.2.2 在 Java 17 下实际执行 `gradlew.bat --offline --no-daemon runGameTestServer`。日志 `verification/V022_GAMETEST_FINAL.log` 记录发现并执行 7 个 GameTest，`All 7 required tests passed`、`BUILD SUCCESSFUL` 和命令退出码 `0`。覆盖合法 `fireTicks=-1`、负 air、food/saturation 21、pitch 91、旧 version 1 Twist/Curse 根 remaining=200 的 ACTIVE 状态及校验前后 NBT 不变，以及 NaN/Infinity、错误类型与有符号极值拒绝。
@@ -42,7 +57,8 @@
 - 真人客户端按键/网络请求、死亡重生、多人与完整整合包中的 0.2.1 诊断 hook；服务端现场 stack 不能证明客户端调用链或形成完整跨异步调用链
 - Curios 实际槽位行为
 - 多人状态同步和核心玩法场景
-- 现有客户端状态同步 packet/API seam 尚未接入实际发送和客户端 sink 注册；当前客户端功能不依赖该 seam，但不得将其描述为已验证的同步功能
+- 0.3.0 状态 packet/API 已接入服务端发送路径；真人连接下的 owner sink、多人 tracking visual、打开页面顺序与 UI 行为仍待最终集成验证
 - 第三方整合包兼容性与性能
+- 真人 GUI 打开/形态切换 packet 往返、多人 tracking 视觉、游戏内截图、GUI 最小尺寸手工操作和 FPS 测量；GameTest 不作为这些视觉或性能结论
 
 开发专服到达 `Done` 仅证明该 userdev 启动路径完成加载，不代表上述项目已通过。

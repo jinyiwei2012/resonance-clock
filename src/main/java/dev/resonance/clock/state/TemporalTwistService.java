@@ -1,6 +1,7 @@
 package dev.resonance.clock.state;
 
 import dev.resonance.clock.config.ServerConfig;
+import dev.resonance.clock.api.FormMode;
 import dev.resonance.clock.debug.ResonanceDebug;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -32,12 +33,17 @@ public final class TemporalTwistService {
         player.displayClientMessage(Component.translatable("message.resonance_clock.twist.cooldown", (cooldown + 19) / 20), true);
         return StartResult.COOLDOWN;
       }
+      int resolvedDuration = ServerConfig.TWIST_DURATION_TICKS.get();
+      int resolvedCooldown = resolveCooldownTicks(FormState.get(player),
+          ServerConfig.TWIST_COOLDOWN_TICKS.get(), ServerConfig.RESONANT_COOLDOWN_MULTIPLIER.get());
       state.put("snapshot", TemporalSnapshot.capture(player).save());
-      state.putInt("remainingTicks", ServerConfig.TWIST_DURATION_TICKS.get());
+      state.putInt("remainingTicks", resolvedDuration);
+      state.putInt("resolvedDurationTicks", resolvedDuration);
+      state.putInt("resolvedCooldownTicks", resolvedCooldown);
       state.putBoolean("executing", false);
       TemporalCurseService.clear(player, false);
       player.displayClientMessage(Component.translatable("message.resonance_clock.twist.started",
-          ServerConfig.TWIST_DURATION_TICKS.get() / 20), true);
+          resolvedDuration / 20), true);
       return StartResult.STARTED;
     }
   }
@@ -124,15 +130,17 @@ public final class TemporalTwistService {
       ResonanceDebug.logRestoreResult(player, "twist", result);
       return;
     }
+    int resolvedCooldown = TemporalState.resolvedCooldownTicks(state);
     TemporalState.clearAnchor(state);
-    state.putInt("cooldownTicks", ServerConfig.TWIST_COOLDOWN_TICKS.get());
+    state.putInt("cooldownTicks", resolvedCooldown);
     player.displayClientMessage(Component.translatable("message.resonance_clock.twist.restored"), true);
     ResonanceDebug.logRestoreResult(player, "twist", result);
   }
 
   private static void fail(ServerPlayer player, CompoundTag state, String messageKey) {
+    int resolvedCooldown = TemporalState.resolvedCooldownTicks(state);
     TemporalState.clearAnchor(state);
-    state.putInt("cooldownTicks", ServerConfig.TWIST_COOLDOWN_TICKS.get());
+    state.putInt("cooldownTicks", resolvedCooldown);
     player.displayClientMessage(Component.translatable(messageKey), true);
   }
 
@@ -142,6 +150,11 @@ public final class TemporalTwistService {
       persistent.putBoolean(TemporalState.INVALID_NOTIFIED, true);
       player.displayClientMessage(Component.translatable("message.resonance_clock.twist.invalid_snapshot"), true);
     }
+  }
+
+  static int resolveCooldownTicks(FormMode mode, int baseCooldownTicks, double resonantMultiplier) {
+    double multiplier = mode == FormMode.RESONANT ? resonantMultiplier : 1.0D;
+    return Math.max(0, (int) Math.round(baseCooldownTicks * multiplier));
   }
 
   private TemporalTwistService() {}

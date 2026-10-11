@@ -10,6 +10,8 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.event.RegisterGameTestsEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
 
 @Mod(ResonanceClock.MOD_ID)
 public final class ResonanceClock {
@@ -20,6 +22,8 @@ public final class ResonanceClock {
     ModItems.register(modBus);
     modBus.addListener(this::registerGameTests);
     ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, ServerConfig.SPEC);
+    DistExecutor.safeRunWhenOn(Dist.CLIENT,
+        () -> dev.resonance.clock.client.ResonanceClientSetup::registerConfig);
     ModNetwork.register();
     MinecraftForge.EVENT_BUS.register(new ServerEvents());
   }

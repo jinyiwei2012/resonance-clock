@@ -10,6 +10,7 @@ public final class ServerConfig {
   public static final ForgeConfigSpec.DoubleValue STARVATION_MULTIPLIER;
   public static final ForgeConfigSpec.IntValue TWIST_DURATION_TICKS;
   public static final ForgeConfigSpec.IntValue TWIST_COOLDOWN_TICKS;
+  public static final ForgeConfigSpec.DoubleValue RESONANT_COOLDOWN_MULTIPLIER;
   public static final ForgeConfigSpec.BooleanValue CURSE_ENABLED;
   public static final ForgeConfigSpec.IntValue CURSE_INTERVAL_TICKS;
   public static final ForgeConfigSpec.ConfigValue<List<? extends String>> EXCLUDED_EFFECTS;
@@ -26,6 +27,8 @@ public final class ServerConfig {
         .defineInRange("temporalTwistDurationTicks", 200, 20, 72000);
     TWIST_COOLDOWN_TICKS = builder.comment("Temporary MVP default: 30 seconds.")
         .defineInRange("temporalTwistCooldownTicks", 600, 0, 72000);
+    RESONANT_COOLDOWN_MULTIPLIER = builder.comment("Cooldown multiplier frozen when a twist starts in RESONANT form.")
+        .defineInRange("resonantCooldownMultiplier", 0.5D, 0.1D, 1.0D);
     CURSE_ENABLED = builder.comment("Enable online-tick progression for Temporal Disorder. Disabling freezes existing curses without deleting them.")
         .define("temporalDisorderEnabled", true);
     CURSE_INTERVAL_TICKS = builder.comment("Online server ticks between Temporal Disorder rewinds. The default is one Minecraft day; 20 is permitted for tests.")
