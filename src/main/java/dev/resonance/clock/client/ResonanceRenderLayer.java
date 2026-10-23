@@ -27,6 +27,7 @@ public final class ResonanceRenderLayer<T extends LivingEntity, M extends Player
   private static final ResourceLocation WHITE =
       new ResourceLocation(ResonanceClock.MOD_ID, "textures/misc/resonance_white.png");
   private static final RenderType GEOMETRY = RenderType.entityTranslucent(WHITE);
+  private static final int FULL_BRIGHT = 15728880;
   private static final int BLUE = 0xBFEFFF;
   private static final int BRIGHT = 0xEFFFFF;
 
@@ -163,7 +164,7 @@ public final class ResonanceRenderLayer<T extends LivingEntity, M extends Player
       float scale = 0.028f;
       poseStack.scale(scale, scale, scale);
       font.drawInBatch(numeral, 0, 0, color, false, poseStack.last().pose(),
-          buffers, Font.DisplayMode.POLYGON_OFFSET, 0, 0);
+          buffers, Font.DisplayMode.POLYGON_OFFSET, 0, FULL_BRIGHT);
       poseStack.popPose();
     }
   }

@@ -1,5 +1,12 @@
 # 验证摘要
 
+## Issue #1 跟进证据（2026-10-23）
+
+- issue #1 三项修复（时钟环上移放大、BASE 形态 I–XII 罗马数字、空中触发时间结修复）合入后，Java 17 下执行 `gradlew build --no-daemon` 退出码 `0`，日志为 ignored 的 `verification/V031_BUILD_AIRFIX.log`，记录 `BUILD SUCCESSFUL in 17s`。
+- Java 17 下执行 `gradlew runGameTestServer --no-daemon` 退出码 `0`，实际发现并执行 23 个 GameTest（既有 19 个 + 新增 4 个安全落点用例），日志为 ignored 的 `verification/V031_GAMETEST_AIRFIX.log`，记录 `23 tests are now running!`、`All 23 required tests passed :)` 与 `BUILD SUCCESSFUL in 47s`。
+- 新增 4 个 GameTest 直接调用 `TemporalRestoreExecutor.findSafePosition`（已改为包可见以便测试）：开阔空地原点原位回退、悬浮原点寻址到最近可站立地面、水体原点绝不解析为液体嵌入位置、方块嵌入原点解析到其上方可站立表面。测试用直接构造的无连接 `ServerPlayer` 与程序化方块几何，不依赖真人客户端。
+- 这些测试证明安全落点解析的纯服务端规则；不证明有连接玩家的完整传送往返（connection 为空的构造玩家使 `restore()` 停在 `TELEPORT_FAILED` 检查）、真人 GUI/视觉与多人场景。候选 2（runClient 视觉验收）与候选 3（roadmap 3–6 阶段）的取舍记录见 [roadmap 决策记录](roadmap.md)。
+
 ## 0.3.0 本轮证据
 
 - 最终 Java 17 ForgeGradle `runGameTestServer --offline --no-daemon` 已完成 clean exit：`verification/V030_GRADLE_GAMETEST_EXIT_DIAG.result.txt` 记录 `exitCode=0`、`runningN=19`、`passedN=19` 和 `buildSuccessful=True`；对应日志记录 `forgegametestserveruserdev`、`19 tests are now running!`、`All 19 required tests passed :)`、服务器自行关闭及 `BUILD SUCCESSFUL in 1m 29s`。这是当前正式 GameTest 证据。

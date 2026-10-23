@@ -55,7 +55,8 @@ public final class TemporalRestoreExecutor {
     return Result.RESTORED;
   }
 
-  private static Optional<BlockPos> findSafePosition(ServerLevel level, ServerPlayer player, BlockPos origin) {
+  /** Package-private so GameTests can verify destination resolution without a networked player. */
+  static Optional<BlockPos> findSafePosition(ServerLevel level, ServerPlayer player, BlockPos origin) {
     // First pass: try the exact snapshot position and nearby vertical offsets,
     // preferring positions above solid ground.
     for (int offset = 0; offset <= 4; offset++) {

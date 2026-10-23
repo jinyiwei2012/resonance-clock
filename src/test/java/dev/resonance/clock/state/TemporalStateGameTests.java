@@ -2,8 +2,11 @@ package dev.resonance.clock.state;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import com.mojang.authlib.GameProfile;
 import java.util.UUID;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
@@ -13,6 +16,8 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.gametest.GameTestHolder;
@@ -380,6 +385,81 @@ public final class TemporalStateGameTests {
         new ItemStack(ModItems.RESONANCE_RELIC.get()));
     require(helper, dev.resonance.clock.network.ModNetwork.mayOpenRelicPanel(player),
         "Genuine held relic was rejected for panel opening");
+    helper.succeed();
+  }
+
+  @GameTest(template = "empty", templateNamespace = "resonance_clock", batch = "resonance_clock")
+  public static void openAirOriginFallsBackToOriginalPosition(GameTestHelper helper) {
+    ServerPlayer player = new ServerPlayer(helper.getLevel().getServer(), helper.getLevel(),
+        new GameProfile(UUID.randomUUID(), "air-fallback-test"));
+    BlockPos origin = helper.absolutePos(new BlockPos(0, 20, 0));
+    Optional<BlockPos> safe = TemporalRestoreExecutor.findSafePosition(helper.getLevel(), player, origin);
+    require(helper, safe.isPresent() && safe.get().equals(origin),
+        "Open-air origin was not accepted as its own restore destination");
+    helper.succeed();
+  }
+
+  @GameTest(template = "empty", templateNamespace = "resonance_clock", batch = "resonance_clock")
+  public static void floatingOriginAboveFloorFindsFloor(GameTestHelper helper) {
+    ServerPlayer player = new ServerPlayer(helper.getLevel().getServer(), helper.getLevel(),
+        new GameProfile(UUID.randomUUID(), "floor-address-test"));
+    BlockPos floor = helper.absolutePos(new BlockPos(0, 1, 0));
+    for (int dx = -2; dx <= 2; dx++) {
+      for (int dz = -2; dz <= 2; dz++) {
+        helper.getLevel().setBlockAndUpdate(floor.offset(dx, 0, dz), Blocks.STONE.defaultBlockState());
+      }
+    }
+    BlockPos origin = helper.absolutePos(new BlockPos(0, 5, 0));
+    Optional<BlockPos> safe = TemporalRestoreExecutor.findSafePosition(helper.getLevel(), player, origin);
+    require(helper, safe.isPresent() && safe.get().getX() == floor.getX()
+            && safe.get().getZ() == floor.getZ() && safe.get().getY() == floor.getY() + 1,
+        "Floating origin was not addressed onto the nearest standable floor");
+    helper.succeed();
+  }
+
+  @GameTest(template = "empty", templateNamespace = "resonance_clock", batch = "resonance_clock")
+  public static void waterOriginNeverResolvesToLiquidSpot(GameTestHelper helper) {
+    ServerPlayer player = new ServerPlayer(helper.getLevel().getServer(), helper.getLevel(),
+        new GameProfile(UUID.randomUUID(), "water-reject-test"));
+    BlockPos center = helper.absolutePos(new BlockPos(0, 2, 0));
+    for (int dx = -2; dx <= 2; dx++) {
+      for (int dz = -2; dz <= 2; dz++) {
+        for (int dy = -1; dy <= 1; dy++) {
+          helper.getLevel().setBlockAndUpdate(center.offset(dx, dy, dz), Blocks.WATER.defaultBlockState());
+        }
+      }
+    }
+    Optional<BlockPos> safe = TemporalRestoreExecutor.findSafePosition(helper.getLevel(), player, center);
+    if (safe.isPresent()) {
+      BlockPos spot = safe.get();
+      AABB bounds = player.getDimensions(player.getPose()).makeBoundingBox(
+          spot.getX() + 0.5D, spot.getY(), spot.getZ() + 0.5D);
+      boolean outsidePool = Math.abs(spot.getX() - center.getX()) > 2
+          || Math.abs(spot.getZ() - center.getZ()) > 2 || Math.abs(spot.getY() - center.getY()) > 1;
+      require(helper, outsidePool && helper.getLevel().noCollision(player, bounds)
+              && !helper.getLevel().containsAnyLiquid(bounds)
+              && helper.getLevel().getBlockState(spot.below()).isFaceSturdy(helper.getLevel(),
+                  spot.below(), Direction.UP),
+          "Water origin resolved to a liquid-embedded or unsafe destination");
+    }
+    helper.succeed();
+  }
+
+  @GameTest(template = "empty", templateNamespace = "resonance_clock", batch = "resonance_clock")
+  public static void embeddedOriginResolvesToStandableTop(GameTestHelper helper) {
+    ServerPlayer player = new ServerPlayer(helper.getLevel().getServer(), helper.getLevel(),
+        new GameProfile(UUID.randomUUID(), "embedded-reject-test"));
+    BlockPos origin = helper.absolutePos(new BlockPos(0, 3, 0));
+    for (int dx = -1; dx <= 1; dx++) {
+      for (int dy = -1; dy <= 1; dy++) {
+        for (int dz = -1; dz <= 1; dz++) {
+          helper.getLevel().setBlockAndUpdate(origin.offset(dx, dy, dz), Blocks.STONE.defaultBlockState());
+        }
+      }
+    }
+    Optional<BlockPos> safe = TemporalRestoreExecutor.findSafePosition(helper.getLevel(), player, origin);
+    require(helper, safe.isPresent() && safe.get().equals(origin.offset(0, 2, 0)),
+        "Embedded origin did not resolve to the standable surface above it");
     helper.succeed();
   }
 

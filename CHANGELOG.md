@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Issue #1 follow-up
+
+- Raised the back-mounted clock ring to shoulder-blade height, enlarged both BASE and RESONANT radii, and added a real I–XII Roman numeral dial to the BASE form.
+- Temporal Twist restore now searches nearby standable ground horizontally (8-block radius) and vertically (±8 blocks) before falling back to the original snapshot position, so mid-air triggers restore instead of failing as `UNSAFE_DESTINATION`.
+- Added four GameTests for safe-destination resolution (open-air fallback, nearest-floor addressing, liquid-embedded and block-embedded rejection); full suite now 23/23 with clean exit `0`.
+- Decision record for remaining roadmap work added to [docs/roadmap.md](docs/roadmap.md); evidence in [docs/verification.md](docs/verification.md).
+
 ## 0.3.0 — Relic forms and stable client contract
 
 - Added persistent BASE and RESONANT relic forms with server-authoritative, equipped-only switching.
