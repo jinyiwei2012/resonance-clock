@@ -6,6 +6,7 @@ import dev.resonance.clock.ResonanceClock;
 import dev.resonance.clock.api.ClientStateSink;
 import dev.resonance.clock.api.FormMode;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -51,7 +52,9 @@ public final class ResonanceRenderLayer<T extends LivingEntity, M extends Player
         ? 0.92f + 0.08f * (float) Math.sin((entity.tickCount + partialTick) * 0.08f) : 1.0f;
     poseStack.pushPose();
     // Player model units are 1/16 block. The positive Z side is the back.
-    poseStack.translate(0.0d, 0.92d, 0.19d);
+    // Raised to shoulder-blade height and placed on the back so it sits centered
+    // rather than hanging below the player.
+    poseStack.translate(0.0d, 1.25d, 0.30d);
     VertexConsumer consumer = buffers.getBuffer(GEOMETRY);
     Matrix4f matrix = poseStack.last().pose();
     Matrix3f normal = poseStack.last().normal();
@@ -59,20 +62,21 @@ public final class ResonanceRenderLayer<T extends LivingEntity, M extends Player
     if (ResonanceVisualSettings.SHOW_RING.get()) {
       int outerSegments = ResonanceVisualSettings.SIMPLE_QUALITY.get() ? 32 : 64;
       if (visual.formMode() == FormMode.BASE) {
-        drawRing(consumer, matrix, normal, 0.78f, outerSegments, 0.035f, BLUE, 0.72f * pulse);
-        drawRing(consumer, matrix, normal, 0.62f, outerSegments / 2, 0.012f, BRIGHT, 0.54f * pulse);
-        drawTicks(consumer, matrix, normal, 0.69f, 0.77f, 0.018f, 12, BRIGHT, 0.72f * pulse);
-        drawHands(consumer, matrix, normal, ageInTicks, 0.70f * pulse);
+        drawRing(consumer, matrix, normal, 0.95f, outerSegments, 0.040f, BLUE, 0.72f * pulse);
+        drawRing(consumer, matrix, normal, 0.72f, outerSegments / 2, 0.015f, BRIGHT, 0.54f * pulse);
+        drawTicks(consumer, matrix, normal, 0.78f, 0.93f, 0.020f, 12, BRIGHT, 0.72f * pulse);
+        drawRomanNumerals(poseStack, buffers, matrix, normal, 1.05f, BRIGHT, 0.80f * pulse);
+        drawHands(consumer, matrix, normal, ageInTicks, 0.78f * pulse);
       } else {
         // Resonant is a separate moon-phase orbit: no BASE ticks or inner dial.
-        drawRing(consumer, matrix, normal, 0.80f, outerSegments, 0.030f, BLUE, 0.62f * pulse);
-        drawMoonPhases(consumer, matrix, normal, 0.63f, pulse);
+        drawRing(consumer, matrix, normal, 1.10f, outerSegments, 0.040f, BLUE, 0.62f * pulse);
+        drawMoonPhases(consumer, matrix, normal, 0.82f, pulse);
         drawFlowers(consumer, matrix, normal, pulse);
       }
     }
     if (ResonanceVisualSettings.SHOW_WINGS.get()) {
-      drawWing(consumer, matrix, normal, -1.0f, pulse);
-      drawWing(consumer, matrix, normal, 1.0f, pulse);
+      drawWing(consumer, matrix, normal, -1.2f, pulse);
+      drawWing(consumer, matrix, normal, 1.2f, pulse);
     }
     poseStack.popPose();
   }
@@ -93,10 +97,10 @@ public final class ResonanceRenderLayer<T extends LivingEntity, M extends Player
   }
 
   private static void drawFlowers(VertexConsumer out, Matrix4f matrix, Matrix3f normal, float pulse) {
-    drawLeaf(out, matrix, normal, -0.48f, 0.50f, -0.76f, 0.70f, 0.17f, pulse);
-    drawLeaf(out, matrix, normal, -0.28f, 0.65f, -0.12f, 0.84f, 0.15f, pulse);
-    drawLeaf(out, matrix, normal, 0.48f, 0.50f, 0.76f, 0.70f, 0.17f, pulse);
-    drawLeaf(out, matrix, normal, 0.28f, 0.65f, 0.12f, 0.84f, 0.15f, pulse);
+    drawLeaf(out, matrix, normal, -0.54f, 0.60f, -0.86f, 0.80f, 0.19f, pulse);
+    drawLeaf(out, matrix, normal, -0.34f, 0.75f, -0.18f, 0.94f, 0.17f, pulse);
+    drawLeaf(out, matrix, normal, 0.54f, 0.60f, 0.86f, 0.80f, 0.19f, pulse);
+    drawLeaf(out, matrix, normal, 0.34f, 0.75f, 0.18f, 0.94f, 0.17f, pulse);
   }
 
   private static void drawLeaf(VertexConsumer out, Matrix4f matrix, Matrix3f normal,
@@ -136,14 +140,42 @@ public final class ResonanceRenderLayer<T extends LivingEntity, M extends Player
     }
   }
 
+  private static final String[] ROMAN_NUMERALS =
+      {"I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"};
+
+  private static void drawRomanNumerals(PoseStack poseStack, MultiBufferSource buffers,
+                                         Matrix4f matrix, Matrix3f normal,
+                                         float radius, int rgb, float alpha) {
+    Font font = Minecraft.getInstance().font;
+    int a = Math.max(0, Math.min(255, (int) (alpha * 255.0f)));
+    int r = (rgb >> 16) & 255;
+    int g = (rgb >> 8) & 255;
+    int b = rgb & 255;
+    int color = (a << 24) | (r << 16) | (g << 8) | b;
+    for (int i = 0; i < 12; i++) {
+      float angle = (float) (Math.PI * 2.0 * i / 12.0 - Math.PI / 2.0);
+      float x = (float) Math.cos(angle) * radius;
+      float y = (float) Math.sin(angle) * radius;
+      String numeral = ROMAN_NUMERALS[i];
+      int width = font.width(numeral);
+      poseStack.pushPose();
+      poseStack.translate(x - width / 2.0f, y - 3.0f, 0.01f);
+      float scale = 0.028f;
+      poseStack.scale(scale, scale, scale);
+      font.drawInBatch(numeral, 0, 0, color, false, poseStack.last().pose(),
+          buffers, Font.DisplayMode.POLYGON_OFFSET, 0, 0);
+      poseStack.popPose();
+    }
+  }
+
   private static void drawHands(VertexConsumer out, Matrix4f matrix, Matrix3f normal,
                                 float age, float alpha) {
     float minute = age * 0.018f;
     float hour = -age * 0.004f;
-    line(out, matrix, normal, 0, 0, (float) Math.cos(minute) * 0.52f,
-        (float) Math.sin(minute) * 0.52f, 0.024f, BRIGHT, alpha);
-    line(out, matrix, normal, 0, 0, (float) Math.cos(hour) * 0.34f,
-        (float) Math.sin(hour) * 0.34f, 0.035f, BLUE, alpha);
+    line(out, matrix, normal, 0, 0, (float) Math.cos(minute) * 0.70f,
+        (float) Math.sin(minute) * 0.70f, 0.024f, BRIGHT, alpha);
+    line(out, matrix, normal, 0, 0, (float) Math.cos(hour) * 0.48f,
+        (float) Math.sin(hour) * 0.48f, 0.035f, BLUE, alpha);
   }
 
   private static void drawWing(VertexConsumer out, Matrix4f matrix, Matrix3f normal,

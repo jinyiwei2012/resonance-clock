@@ -56,13 +56,17 @@ public final class TemporalRestoreExecutor {
   }
 
   private static Optional<BlockPos> findSafePosition(ServerLevel level, ServerPlayer player, BlockPos origin) {
+    // First pass: try the exact snapshot position and nearby vertical offsets,
+    // preferring positions above solid ground.
     for (int offset = 0; offset <= 4; offset++) {
       for (int direction : offset == 0 ? new int[] {0} : new int[] {offset, -offset}) {
         BlockPos candidate = origin.offset(0, direction, 0);
         if (candidate.getY() <= level.getMinBuildHeight()
             || candidate.getY() + player.getDimensions(player.getPose()).height >= level.getMaxBuildHeight()
-            || !level.getWorldBorder().isWithinBounds(candidate)
-            || !level.getBlockState(candidate.below()).isFaceSturdy(level, candidate.below(), Direction.UP)) {
+            || !level.getWorldBorder().isWithinBounds(candidate)) {
+          continue;
+        }
+        if (!level.getBlockState(candidate.below()).isFaceSturdy(level, candidate.below(), Direction.UP)) {
           continue;
         }
         AABB bounds = player.getDimensions(player.getPose()).makeBoundingBox(
@@ -71,6 +75,48 @@ public final class TemporalRestoreExecutor {
           return Optional.of(candidate);
         }
       }
+    }
+    // Second pass: expand the search horizontally and vertically for solid ground.
+    // This handles the case where the player triggered the twist while suspended
+    // in air (e.g. over water, lava, or floating) and the snapshot position is
+    // far from any walkable surface.
+    for (int radius = 1; radius <= 8; radius++) {
+      for (int dx = -radius; dx <= radius; dx++) {
+        for (int dz = -radius; dz <= radius; dz++) {
+          if (dx == 0 && dz == 0) {
+            continue;
+          }
+          double distanceSq = dx * dx + dz * dz;
+          if (distanceSq > radius * radius) {
+            continue;
+          }
+          for (int yOffset = -8; yOffset <= 8; yOffset++) {
+            BlockPos candidate = origin.offset(dx, yOffset, dz);
+            if (candidate.getY() <= level.getMinBuildHeight()
+                || candidate.getY() + player.getDimensions(player.getPose()).height >= level.getMaxBuildHeight()
+                || !level.getWorldBorder().isWithinBounds(candidate)) {
+              continue;
+            }
+            if (!level.getBlockState(candidate.below()).isFaceSturdy(level, candidate.below(), Direction.UP)) {
+              continue;
+            }
+            AABB bounds = player.getDimensions(player.getPose()).makeBoundingBox(
+                candidate.getX() + 0.5D, candidate.getY(), candidate.getZ() + 0.5D);
+            if (level.noCollision(player, bounds) && !level.containsAnyLiquid(bounds)) {
+              return Optional.of(candidate);
+            }
+          }
+        }
+      }
+    }
+    // Third pass: if no solid ground was found, fall back to the original snapshot
+    // position as long as it is not inside a solid block or liquid. This allows
+    // temporal twist to function when triggered from mid-air over large bodies of
+    // water or other non-solid terrain.
+    AABB originBounds = player.getDimensions(player.getPose()).makeBoundingBox(
+        origin.getX() + 0.5D, origin.getY(), origin.getZ() + 0.5D);
+    if (level.noCollision(player, originBounds) && !level.containsAnyLiquid(originBounds)) {
+      return Optional.of(origin);
     }
     return Optional.empty();
   }
