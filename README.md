@@ -21,7 +21,7 @@ Windows 可使用：
 gradlew.bat build
 ```
 
-当前版本为 `0.3.0` 预发布测试版。安装 Minecraft 1.20.1、Forge 47.4.5、Curios Forge 5.14.1+ 和 Java 17 后，移除旧版 Resonance Clock JAR，再将本 JAR 放入同一 Forge 实例的 `mods` 目录；升级前请备份世界。客户端与服务器必须使用相同的协议 2 Mod 版本；不需要 Relics 或 Iron 前置。
+当前版本为 `0.3.1` 预发布测试版。安装 Minecraft 1.20.1、Forge 47.4.5、Curios Forge 5.14.1+ 和 Java 17 后，移除旧版 Resonance Clock JAR，再将本 JAR 放入同一 Forge 实例的 `mods` 目录；升级前请备份世界。客户端与服务器必须使用相同的协议 2 Mod 版本；不需要 Relics 或 Iron 前置。
 
 当前本地 JAR 已由 Java 17 构建，且其 `META-INF/mods.toml` 声明许可证为 `MIT`。
 
@@ -45,7 +45,7 @@ gradlew.bat build
 
 ## 验证状态
 
-0.3.0 是测试版而非稳定版。ForgeGradle GameTest 实际发现并通过 19/19 个 required tests，并以 clean exit `0` 结束；覆盖服务端状态、packet codec、Curios capability 与专用 GameTest server 启动。尚未完成真人 GUI/网络 ACK 往返、双客户端多人视觉、传送、截图/FPS 和第三方整合包联动验收，详见 [验证摘要](docs/verification.md)。Apollon 适配、时停与终结技均未实现，保留待后续适配。
+0.3.1 是测试版而非稳定版。ForgeGradle GameTest 实际发现并通过 23/23 个 required tests，并以 clean exit `0` 结束；覆盖服务端状态、packet codec、Curios capability、安全落点解析与专用 GameTest server 启动。尚未完成真人 GUI/网络 ACK 往返、双客户端多人视觉、传送、截图/FPS 和第三方整合包联动验收，详见 [验证摘要](docs/verification.md)。Apollon 适配、时停与终结技均未实现，保留待后续适配。
 
 ## 文档
 

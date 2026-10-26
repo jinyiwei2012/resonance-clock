@@ -1,5 +1,13 @@
 # 验证摘要
 
+## 0.3.1 发布证据（2026-10-23）
+
+- 版本号提升至 `0.3.1`（gradle.properties `mod_version`），CHANGELOG 的 Unreleased 段定版为 `0.3.1 — Issue #1 visual fixes and air-trigger restore`，README 版本与验证状态行同步更新。
+- Java 17 下执行 `gradlew clean build --no-daemon` 退出码 `0`，日志为 ignored 的 `verification/V031_RELEASE_BUILD.log`；产物 `build/libs/resonance_clock-0.3.1.jar` 大小 `146245` 字节，SHA-256 `ec5dcc932c66567d322aa11c4bdb9fb525bc346deec67630ed5b40cb91de9c41`，CRC-32 `D4C12FCA`。
+- 发布 JAR 内 `META-INF/mods.toml` 实测声明版本 `0.3.1`、许可证 `MIT`、Curios 依赖 `[5.14.1,6)`；JAR 含 70 个 class 文件。
+- 随后执行 `gradlew runGameTestServer --no-daemon` 退出码 `0`，实际发现并执行 23 个 GameTest，日志为 ignored 的 `verification/V031_RELEASE_GAMETEST.log`，记录 `23 tests are now running!`、`All 23 required tests passed :)` 与 `BUILD SUCCESSFUL in 2m 22s`。
+- GitHub Release `v0.3.1` 以 Pre-release 发布，资产为 `resonance_clock-0.3.1.jar` 与 `resonance_clock-0.3.1.jar.sha256`；上述哈希与 GameTest 结果为该资产的发布证据。真人 GUI/视觉、多人、传送与整合包场景仍按既有边界保持未验证。
+
 ## Issue #1 跟进证据（2026-10-23）
 
 - issue #1 三项修复（时钟环上移放大、BASE 形态 I–XII 罗马数字、空中触发时间结修复）合入后，Java 17 下执行 `gradlew build --no-daemon` 退出码 `0`，日志为 ignored 的 `verification/V031_BUILD_AIRFIX.log`，记录 `BUILD SUCCESSFUL in 17s`。

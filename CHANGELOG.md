@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — Issue #1 follow-up
+## 0.3.1 — Issue #1 visual fixes and air-trigger restore
 
 - Raised the back-mounted clock ring to shoulder-blade height, enlarged both BASE and RESONANT radii, and added a real I–XII Roman numeral dial to the BASE form.
 - Temporal Twist restore now searches nearby standable ground horizontally (8-block radius) and vertically (±8 blocks) before falling back to the original snapshot position, so mid-air triggers restore instead of failing as `UNSAFE_DESTINATION`.
